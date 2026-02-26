@@ -8,21 +8,33 @@ import (
 	"github.com/Builtbyjb/yay/pkg/libyay/internal/macos"
 )
 
-func Fetch() []helper.Setting {
-	database := helper.NewDatabase("yay.db")
+func Fetch() ([]helper.Setting, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
+		database, err := helper.NewDatabase(macos.DatabaseDirectory)
+		if err != nil {
+			return nil, err
+		}
+		defer database.Close()
+
+		if err := database.Init(); err != nil {
+			return nil, err
+		}
+
 		dirs := macos.AppDirectories
-		settings := macos.GetSettings(*database, dirs)
-		return settings
+		settings, err := macos.GetSettings(*database, dirs)
+		if err != nil {
+			return nil, err
+		}
+		return settings, nil
 
 	case "windows":
 		fmt.Println("Coming Soon...")
-		return nil
+		return nil, nil
 	default:
 		fmt.Println("Unsupported operating system.")
-		return nil
+		return nil, nil
 	}
 }
 

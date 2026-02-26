@@ -8,20 +8,38 @@ import (
 	"github.com/Builtbyjb/yay/pkg/libyay/internal/helper"
 )
 
-func GetBinaryPath(dir string, app_name string) string {
-	return dir + "/" + app_name + "/Contents/MacOS/"
-}
-
-func GetIconPath(dir string, app_name string) string {
-	// NOTE: Icon names vary
-	// This is a temporary fix
-	return dir + "/" + app_name + "/Contents/Resources/apps.icns"
-}
-
-func GetSettings(database helper.Database, dirs []string) []helper.Setting {
+func GetSettings(database helper.Database, dirs []string) ([]helper.Setting, error) {
 	apps := getApps(dirs)
-	settings := database.Refresh(apps)
-	return settings
+	settings, err := database.Refresh(apps)
+	if err != nil {
+		return nil, err
+	}
+	return settings, nil
+}
+
+func getBinaryPath(dir string, appName string) string {
+	return dir + "/" + appName + "/Contents/MacOS/"
+}
+
+func getIconPath(dir string, appName string) string {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		fmt.Printf("Error reading directory %s: %v\n", dir, err)
+		return ""
+	}
+
+	var iconName string
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".icns") {
+			iconName = file.Name()
+		}
+	}
+
+	if iconName == "" {
+		return ""
+	}
+
+	return dir + "/" + appName + "/Contents/Resources/" + iconName
 }
 
 func getApps(dirs []string) []helper.App {
@@ -34,12 +52,12 @@ func getApps(dirs []string) []helper.App {
 		}
 
 		for _, entry := range entries {
-			app_name, ok := strings.CutSuffix(entry.Name(), ".app")
+			appName, ok := strings.CutSuffix(entry.Name(), ".app")
 			if ok {
 				apps = append(apps, helper.App{
-					Name:     app_name,
-					Path:     GetBinaryPath(dir, app_name),
-					IconPath: GetIconPath(dir, app_name),
+					Name:     appName,
+					Path:     getBinaryPath(dir, appName),
+					IconPath: getIconPath(dir, appName),
 				})
 			}
 		}
