@@ -12,8 +12,15 @@ func Fetch() ([]helper.Setting, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
-		database := helper.NewDatabase(macos.DatabaseDirectory)
+		database, err := helper.NewDatabase(macos.DatabaseDirectory)
+		if err != nil {
+			return nil, err
+		}
 		defer database.Close()
+
+		if err := database.Init(); err != nil {
+			return nil, err
+		}
 
 		dirs := macos.AppDirectories
 		settings, err := macos.GetSettings(*database, dirs)

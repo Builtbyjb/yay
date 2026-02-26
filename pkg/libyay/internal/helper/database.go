@@ -2,7 +2,6 @@ package helper
 
 import (
 	"database/sql"
-	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -11,16 +10,16 @@ type Database struct {
 	conn *sql.DB
 }
 
-func NewDatabase(dbPath string) *Database {
+func NewDatabase(dbPath string) (*Database, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return &Database{conn: db}
+	return &Database{conn: db}, nil
 }
 
-func (d *Database) Init() {
+func (d *Database) Init() error {
 	// Create settings table if it doesn't exist
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS settings (
@@ -35,8 +34,10 @@ func (d *Database) Init() {
 	`
 	_, err := d.conn.Exec(createTableQuery)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 func (d *Database) Close() error {
