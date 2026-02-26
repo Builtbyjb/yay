@@ -1,15 +1,15 @@
-package main
+package tui
 
 import (
 	"testing"
 
-	"github.com/Builtbyjb/yay/pkg/libyay"
+	lib "github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // testSettings returns a reusable slice of settings for tests.
-func testSettings() []libyay.Setting {
-	return []libyay.Setting{
+func testSettings() []lib.Setting {
+	return []lib.Setting{
 		{Id: 1, Name: "Firefox", Path: "/app/firefox", HotKey: "ctrl+1", Mode: "default", Enabled: true},
 		{Id: 2, Name: "Terminal", Path: "/app/terminal", HotKey: "", Mode: "fullscreen", Enabled: true},
 		{Id: 3, Name: "Finder", Path: "/app/finder", HotKey: "ctrl+3", Mode: "desktop", Enabled: false},
@@ -91,7 +91,7 @@ func TestNewModel_AllSettingsVisible(t *testing.T) {
 }
 
 func TestNewModel_EmptySettings(t *testing.T) {
-	m := NewModel([]libyay.Setting{}, "1.0.0")
+	m := NewModel([]lib.Setting{}, "1.0.0")
 
 	if len(m.filteredIndices) != 0 {
 		t.Errorf("expected 0 filtered indices, got %d", len(m.filteredIndices))
@@ -239,7 +239,7 @@ func TestMoveCursor_ClampAtBottom(t *testing.T) {
 }
 
 func TestMoveCursor_EmptyList(t *testing.T) {
-	m := NewModel([]libyay.Setting{}, "0.1.0")
+	m := NewModel([]lib.Setting{}, "0.1.0")
 
 	m = sendKey(t, m, "down")
 	if m.cursor != 0 {
@@ -286,7 +286,7 @@ func TestBrowse_EnterFocusesRow(t *testing.T) {
 }
 
 func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
-	m := NewModel([]libyay.Setting{}, "0.1.0")
+	m := NewModel([]lib.Setting{}, "0.1.0")
 	m = sendKey(t, m, "enter")
 
 	if m.state != stateBrowse {
@@ -763,7 +763,7 @@ func TestView_ContainsSettingNames(t *testing.T) {
 }
 
 func TestView_EmptyListMessage(t *testing.T) {
-	m := NewModel([]libyay.Setting{}, "0.1.0")
+	m := NewModel([]lib.Setting{}, "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -941,7 +941,7 @@ func TestSelectedSetting_ReturnsCorrect(t *testing.T) {
 }
 
 func TestSelectedSetting_NilOnEmpty(t *testing.T) {
-	m := NewModel([]libyay.Setting{}, "0.1.0")
+	m := NewModel([]lib.Setting{}, "0.1.0")
 
 	s := m.selectedSetting()
 	if s != nil {

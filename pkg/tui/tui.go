@@ -1,10 +1,10 @@
-package main
+package tui
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/Builtbyjb/yay/pkg/libyay"
+	lib "github.com/Builtbyjb/yay/pkg/lib/core"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -43,7 +43,7 @@ type changeEntry struct {
 // model is the Bubble Tea model for the YAY TUI
 type model struct {
 	state           focusState
-	settings        []libyay.Setting
+	settings        []lib.Setting
 	filteredIndices []int
 	filterInput     textinput.Model
 	cursor          int // position within filteredIndices
@@ -129,7 +129,7 @@ const asciiLogo = `
    ██    ██   ██    ██`
 
 // NewModel creates and initialises a new TUI model
-func NewModel(settings []libyay.Setting, version string) model {
+func NewModel(settings []lib.Setting, version string) model {
 	ti := textinput.New()
 	ti.Placeholder = "Type to filter..."
 	ti.CharLimit = 64
@@ -149,7 +149,7 @@ func NewModel(settings []libyay.Setting, version string) model {
 }
 
 // RunTUI starts the TUI program. Call this from main.
-func RunTUI(settings []libyay.Setting, version string) ([]changeEntry, error) {
+func RunTUI(settings []lib.Setting, version string) ([]changeEntry, error) {
 	m := NewModel(settings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	finalModel, err := p.Run()
@@ -344,14 +344,14 @@ func (m model) View() string {
 			if m.recordingHotkey {
 				b.WriteString(helpStyle.Render("  Press any key to set hotkey  backspace: clear  esc: cancel"))
 			} else {
-				b.WriteString(helpStyle.Render("  shift+tab: next column  enter: record hotkey  esc/ctrl+q: unfocus"))
+				b.WriteString(helpStyle.Render("  tab: next column  enter: record hotkey  esc/ctrl+q: unfocus"))
 			}
 		case colMode:
-			b.WriteString(helpStyle.Render("  space/enter/←/→: cycle mode  shift+tab: next column  esc/ctrl+q: unfocus"))
+			b.WriteString(helpStyle.Render("  space/enter/←/→: cycle mode  tab: next column  esc/ctrl+q: unfocus"))
 		case colEnabled:
-			b.WriteString(helpStyle.Render("  space/enter: toggle  shift+tab: next column  esc/ctrl+q: unfocus"))
+			b.WriteString(helpStyle.Render("  space/enter: toggle  tab: next column  esc/ctrl+q: unfocus"))
 		default:
-			b.WriteString(helpStyle.Render("  shift+tab: select column  esc/ctrl+q: unfocus"))
+			b.WriteString(helpStyle.Render("  tab: select column  esc/ctrl+q: unfocus"))
 		}
 	}
 
@@ -474,7 +474,7 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.pendingMods = ""
 		return m, nil
 
-	case "shift+tab":
+	case "tab":
 		m.cycleColumn()
 		return m, nil
 
@@ -547,7 +547,7 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Build the hotkey string from the tea.KeyMsg
-	hotkey := buildHotkeyString(msg)
+	hotkey := msg.String()
 	if hotkey == "" {
 		return m, nil
 	}
@@ -681,7 +681,7 @@ func (m *model) toggleEnabled() {
 }
 
 // selectedSetting returns the currently selected setting, or nil if none.
-func (m *model) selectedSetting() *libyay.Setting {
+func (m *model) selectedSetting() *lib.Setting {
 	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
 		return nil
 	}
@@ -729,16 +729,6 @@ func indexOf(slice []string, val string) int {
 		}
 	}
 	return 0
-}
-
-// buildHotkeyString converts a tea.KeyMsg into a human-readable hotkey string
-// using the format <modifier>+<key>
-func buildHotkeyString(msg tea.KeyMsg) string {
-	raw := msg.String()
-	if raw == "" {
-		return ""
-	}
-	return raw
 }
 
 // isModifierOnly returns true if the key string is just a modifier key name

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Builtbyjb/yay/pkg/libyay"
+	"github.com/Builtbyjb/yay/pkg/lib"
+	"github.com/Builtbyjb/yay/pkg/tui"
 )
 
 const VERSION = "0.1.0"
 
 func main() {
-	settings, err := libyay.Fetch()
+	settings, err := lib.Fetch()
 	if err != nil {
 		fmt.Println("Error occurred while fetching applications:", err)
 		os.Exit(1)
@@ -21,11 +22,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	changes, err := RunTUI(settings, VERSION)
+	changes, err := tui.RunTUI(settings, VERSION)
 	if err != nil {
 		fmt.Println("Error running TUI:", err)
 		os.Exit(1)
 	}
 
-	PrintChanges(changes)
+	tui.PrintChanges(changes)
 }

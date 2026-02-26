@@ -1,4 +1,4 @@
-package libyay
+package lib
 
 import (
 	"fmt"
@@ -7,14 +7,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/Builtbyjb/yay/pkg/libyay/internal/helper"
-	"github.com/Builtbyjb/yay/pkg/libyay/internal/macos"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
+	"github.com/Builtbyjb/yay/pkg/lib/macos"
 )
 
-// Setting is re-exported from the internal helper package so external
-type Setting = helper.Setting
-
-func Fetch() ([]helper.Setting, error) {
+func Fetch() ([]core.Setting, error) {
 
 	usr, err := user.Current()
 	if err != nil {
@@ -36,7 +33,7 @@ func Fetch() ([]helper.Setting, error) {
 			return nil, err
 		}
 
-		database, err := helper.NewDatabase(dbPath)
+		database, err := core.NewDatabase(dbPath)
 		if err != nil {
 			return nil, err
 		}
