@@ -9,7 +9,12 @@ import (
 const VERSION = "0.1.0"
 
 func main() {
-	app := libyay.Fetch()
+	app, err := libyay.Fetch()
+	if err != nil {
+		fmt.Println("Error occurred while fetching applications:", err)
+		return
+	}
+
 	if app == nil {
 		fmt.Println("No applications found.")
 		return

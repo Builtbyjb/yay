@@ -39,21 +39,29 @@ func (d *Database) Init() {
 	}
 }
 
-func (d *Database) UpdateHokey(setting Setting) {
-
+func (d *Database) Close() error {
+	return d.conn.Close()
 }
 
-func (d *Database) UpdateMode(setting Setting) {
-
+func (d *Database) UpdateHokey(id int, hotkey string) error {
+	query := "UPDATE settings SET hotkey = ? WHERE id = ?"
+	_, err := d.conn.Exec(query, hotkey, id)
+	return err
 }
 
-func (d *Database) UpdateEnabled(setting Setting) {
-
+func (d *Database) UpdateMode(id int, mode string) error {
+	query := "UPDATE settings SET mode = ? WHERE id = ?"
+	_, err := d.conn.Exec(query, mode, id)
+	return err
 }
 
-func (d *Database) Refresh(apps []App) []Setting {
-	// NOTE: Return settings id
-	// TODO: Break it up into private methods
+func (d *Database) UpdateEnabled(id int, enabled bool) error {
+	query := "UPDATE settings SET enabled = ? WHERE id = ?"
+	_, err := d.conn.Exec(query, enabled, id)
+	return err
+}
+
+func (d *Database) Refresh(apps []App) ([]Setting, error) {
 	// Build a map of app paths for quick lookup
 	appMap := make(map[string]App)
 	for _, app := range apps {
@@ -61,26 +69,12 @@ func (d *Database) Refresh(apps []App) []Setting {
 	}
 
 	// Fetch all existing settings from the database
-	rows, err := d.conn.Query("SELECT name, path, icon_path, hotkey, mode, enabled FROM settings")
+	existingPaths, err := d.getExistingPaths()
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	existingPaths := make(map[string]struct{})
-	for rows.Next() {
-		var s Setting
-		if err := rows.Scan(&s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
-			log.Fatal(err)
-		}
-		existingPaths[s.Path] = struct{}{}
-	}
-	if err := rows.Err(); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// Add apps in apps list but not in the database
-	// TODO: Use the save method here
 	for _, app := range apps {
 		if _, exists := existingPaths[app.Path]; !exists {
 			_, err := d.conn.Exec(
@@ -88,7 +82,7 @@ func (d *Database) Refresh(apps []App) []Setting {
 				app.Name, app.Path, app.IconPath, "", "default", true,
 			)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 		}
 	}
@@ -98,33 +92,60 @@ func (d *Database) Refresh(apps []App) []Setting {
 		if _, exists := appMap[path]; !exists {
 			_, err := d.conn.Exec("DELETE FROM settings WHERE path = ?", path)
 			if err != nil {
-				log.Fatal(err)
+				return nil, err
 			}
 		}
 	}
 
 	// Return the updated settings list
-	updatedRows, err := d.conn.Query("SELECT name, path, icon_path, hotkey, mode, enabled FROM settings")
+	settings, err := d.getUpdatedSettings()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
+	}
+
+	return settings, nil
+}
+
+func (d *Database) getExistingPaths() (map[string]struct{}, error) {
+	rows, err := d.conn.Query("SELECT * FROM settings")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	existingPaths := make(map[string]struct{})
+	for rows.Next() {
+		var s Setting
+		if err := rows.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+			return nil, err
+		}
+		existingPaths[s.Path] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return existingPaths, nil
+}
+
+func (d *Database) getUpdatedSettings() ([]Setting, error) {
+	updatedRows, err := d.conn.Query("SELECT * FROM settings")
+	if err != nil {
+		return nil, err
 	}
 	defer updatedRows.Close()
 
 	var settings []Setting
 	for updatedRows.Next() {
 		var s Setting
-		if err := updatedRows.Scan(&s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
-			log.Fatal(err)
+		if err := updatedRows.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+			return nil, err
 		}
 		settings = append(settings, s)
 	}
 	if err := updatedRows.Err(); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return settings
-}
-
-func (d *Database) Close() error {
-	return d.conn.Close()
+	return settings, nil
 }
