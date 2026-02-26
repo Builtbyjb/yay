@@ -12,4 +12,4 @@ var AppDirectories = []string{
 	// "/System/Library/CoreServices",
 }
 
-const DatabaseDirectory = "~/Library/Applications\\ support/Yay/db.sqlite3"
+// const DatabaseDirectory = "~/Library/Applications\\ support/Yay/db.sqlite3"
