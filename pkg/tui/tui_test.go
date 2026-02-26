@@ -42,8 +42,8 @@ func sendKey(t *testing.T, m model, key string) model {
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	case "backspace":
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-	case "shift+tab":
-		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	// case "shift+tab":
+	// 	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	case "tab":
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	case "ctrl+c":
@@ -337,19 +337,19 @@ func TestCycleColumn_FullCycle(t *testing.T) {
 		t.Fatalf("expected initial column colHotkey, got %d", m.activeCol)
 	}
 
-	m = sendKey(t, m, "shift+tab")
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colMode {
-		t.Errorf("expected colMode after first shift+tab, got %d", m.activeCol)
+		t.Errorf("expected colMode after first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
-	m = sendKey(t, m, "shift+tab")
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colEnabled {
-		t.Errorf("expected colEnabled after second shift+tab, got %d", m.activeCol)
+		t.Errorf("expected colEnabled after second %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
-	m = sendKey(t, m, "shift+tab")
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colHotkey {
-		t.Errorf("expected colHotkey after third shift+tab (wrap), got %d", m.activeCol)
+		t.Errorf("expected colHotkey after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 }
 
@@ -363,16 +363,16 @@ func TestCycleColumn_ResetsRecording(t *testing.T) {
 	}
 
 	// Now we manually set state to test that cycling resets recording
-	// Since shift+tab goes through handleRowFocusKey which checks recordingHotkey first,
+	// Since SWITCH_COLUMN_KEY goes through handleRowFocusKey which checks recordingHotkey first,
 	// we need to cancel recording first (esc), then cycle
 	m = sendKey(t, m, "esc") // cancel recording
 	if m.recordingHotkey {
 		t.Fatal("expected recordingHotkey false after esc")
 	}
 
-	m = sendKey(t, m, "shift+tab")
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // cycle column
 	if m.recordingHotkey {
-		t.Errorf("expected recordingHotkey false after shift+tab")
+		t.Errorf("expected recordingHotkey false after %s", SWITCH_COLUMN_KEY)
 	}
 }
 
@@ -381,8 +381,8 @@ func TestCycleColumn_ResetsRecording(t *testing.T) {
 func TestCycleModeForward(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// First setting (Firefox) starts at "default"
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // go to colMode
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	if m.activeCol != colMode {
 		t.Fatalf("expected colMode, got %d", m.activeCol)
@@ -410,8 +410,8 @@ func TestCycleModeForward(t *testing.T) {
 
 func TestCycleModeForward_WithEnterKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // go to colMode
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "enter")
 	idx := m.filteredIndices[m.cursor]
@@ -422,8 +422,8 @@ func TestCycleModeForward_WithEnterKey(t *testing.T) {
 
 func TestCycleModeForward_WithRightKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // go to colMode
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "right")
 	idx := m.filteredIndices[m.cursor]
@@ -434,8 +434,8 @@ func TestCycleModeForward_WithRightKey(t *testing.T) {
 
 func TestCycleModeBackward_WithLeftKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // go to colMode
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	// default -> left -> desktop (wrap backward)
 	m = sendKey(t, m, "left")
@@ -447,9 +447,9 @@ func TestCycleModeBackward_WithLeftKey(t *testing.T) {
 
 func TestCycleMode_LogsChange(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // go to colMode
-	m = sendKey(t, m, " ")         // cycle mode
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
+	m = sendKey(t, m, " ")               // cycle mode
 
 	if len(m.changes) != 1 {
 		t.Fatalf("expected 1 change, got %d", len(m.changes))
@@ -471,9 +471,9 @@ func TestCycleMode_LogsChange(t *testing.T) {
 func TestToggleEnabled(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// Firefox starts enabled=true
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, "shift+tab") // colMode
-	m = sendKey(t, m, "shift+tab") // colEnabled
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
 	if m.activeCol != colEnabled {
 		t.Fatalf("expected colEnabled, got %d", m.activeCol)
@@ -495,9 +495,9 @@ func TestToggleEnabled(t *testing.T) {
 
 func TestToggleEnabled_WithEnterKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus
-	m = sendKey(t, m, "shift+tab") // colMode
-	m = sendKey(t, m, "shift+tab") // colEnabled
+	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
 	m = sendKey(t, m, "enter")
 	idx := m.filteredIndices[m.cursor]
@@ -508,10 +508,10 @@ func TestToggleEnabled_WithEnterKey(t *testing.T) {
 
 func TestToggleEnabled_LogsChange(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")     // focus
-	m = sendKey(t, m, "shift+tab") // colMode
-	m = sendKey(t, m, "shift+tab") // colEnabled
-	m = sendKey(t, m, " ")         // toggle
+	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
+	m = sendKey(t, m, " ")               // toggle
 
 	if len(m.changes) != 1 {
 		t.Fatalf("expected 1 change, got %d", len(m.changes))
@@ -663,7 +663,7 @@ func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus
 	// Move to mode column so j/k don't interfere with hotkey recording
-	m = sendKey(t, m, "shift+tab") // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 
 	m = sendKey(t, m, "j")
 	if m.cursor != 1 {
@@ -803,8 +803,8 @@ func TestView_ShowsRowFocusHelp(t *testing.T) {
 	m.height = 40
 	view := m.View()
 
-	if !containsAny(view, "shift+tab") {
-		t.Error("expected row focus help text with shift+tab")
+	if !containsAny(view, SWITCH_COLUMN_KEY) {
+		t.Errorf("expected row focus help text with %s", SWITCH_COLUMN_KEY)
 	}
 }
 
@@ -903,22 +903,22 @@ func TestMultipleChanges_Accumulated(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 
 	// Change mode on first row
-	m = sendKey(t, m, "enter")     // focus
-	m = sendKey(t, m, "shift+tab") // colMode
-	m = sendKey(t, m, " ")         // cycle mode
+	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, " ")               // cycle mode
 
 	// Toggle enabled on first row
-	m = sendKey(t, m, "shift+tab") // colEnabled
-	m = sendKey(t, m, " ")         // toggle
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
+	m = sendKey(t, m, " ")               // toggle
 
 	// Unfocus and move to next row
 	m = sendKey(t, m, "esc")
 	m = sendKey(t, m, "down")
 
 	// Change mode on second row
-	m = sendKey(t, m, "enter")     // focus
-	m = sendKey(t, m, "shift+tab") // colMode
-	m = sendKey(t, m, " ")         // cycle mode
+	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, " ")               // cycle mode
 
 	if len(m.changes) != 3 {
 		t.Errorf("expected 3 accumulated changes, got %d", len(m.changes))
