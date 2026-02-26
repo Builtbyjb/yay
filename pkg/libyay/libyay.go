@@ -4,28 +4,26 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/Builtbyjb/yay/pkg/libyay/helper"
-	"github.com/Builtbyjb/yay/pkg/libyay/macos"
+	"github.com/Builtbyjb/yay/pkg/libyay/internal/helper"
+	"github.com/Builtbyjb/yay/pkg/libyay/internal/macos"
 )
 
-func Fetch() []helper.App {
+func Fetch() []helper.Setting {
+	database := helper.NewDatabase("yay.db")
+
 	switch runtime.GOOS {
 	case "darwin":
-		fmt.Println("Fetching macOS applications...")
-		// Create a apps list
-		// Return the apps list
 		dirs := macos.AppDirectories
-		apps := macos.GetApps(dirs)
-		return apps
+		settings := macos.GetSettings(*database, dirs)
+		return settings
 
 	case "windows":
-		fmt.Println("Fetching Windows applications...")
-		// Fetch Windows applications
-		// apps := windows.FetchApps()
-		// return apps
+		fmt.Println("Coming Soon...")
 		return nil
 	default:
 		fmt.Println("Unsupported operating system.")
 		return nil
 	}
 }
+
+// Update function
