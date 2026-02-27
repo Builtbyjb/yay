@@ -280,7 +280,7 @@ func TestBrowse_EnterFocusesRow(t *testing.T) {
 	if m.state != stateRowFocus {
 		t.Errorf("expected stateRowFocus, got %d", m.state)
 	}
-	if m.activeCol != colHotkey {
+	if m.activeCol != colKey {
 		t.Errorf("expected activeCol colHotkey on enter, got %d", m.activeCol)
 	}
 }
@@ -333,7 +333,7 @@ func TestCycleColumn_FullCycle(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row, starts at colHotkey
 
-	if m.activeCol != colHotkey {
+	if m.activeCol != colKey {
 		t.Fatalf("expected initial column colHotkey, got %d", m.activeCol)
 	}
 
@@ -348,7 +348,7 @@ func TestCycleColumn_FullCycle(t *testing.T) {
 	}
 
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
-	if m.activeCol != colHotkey {
+	if m.activeCol != colKey {
 		t.Errorf("expected colHotkey after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 }
@@ -531,7 +531,7 @@ func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row, colHotkey
 
-	if m.activeCol != colHotkey {
+	if m.activeCol != colKey {
 		t.Fatalf("expected colHotkey, got %d", m.activeCol)
 	}
 
@@ -1018,24 +1018,6 @@ func TestIndexOf(t *testing.T) {
 	}
 	if indexOf(modes, "nonexistent") != 0 {
 		t.Error("indexOf should return 0 for unknown values")
-	}
-}
-
-func TestIsModifierOnly(t *testing.T) {
-	if !isModifierOnly("ctrl") {
-		t.Error("expected ctrl to be modifier only")
-	}
-	if !isModifierOnly("shift") {
-		t.Error("expected shift to be modifier only")
-	}
-	if !isModifierOnly("alt") {
-		t.Error("expected alt to be modifier only")
-	}
-	if isModifierOnly("a") {
-		t.Error("'a' should not be modifier only")
-	}
-	if isModifierOnly("ctrl+a") {
-		t.Error("'ctrl+a' should not be modifier only")
 	}
 }
 
