@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Builtbyjb/yay/pkg/libyay/internal/helper"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 )
 
-func GetSettings(database helper.Database, dirs []string) ([]helper.Setting, error) {
+func GetSettings(database core.Database, dirs []string) ([]core.Setting, error) {
 	apps := getApps(dirs)
 	settings, err := database.Refresh(apps)
 	if err != nil {
@@ -42,8 +42,8 @@ func getIconPath(dir string, appName string) string {
 	return dir + "/" + appName + "/Contents/Resources/" + iconName
 }
 
-func getApps(dirs []string) []helper.App {
-	apps := []helper.App{}
+func getApps(dirs []string) []core.App {
+	apps := []core.App{}
 	for _, dir := range dirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -54,7 +54,7 @@ func getApps(dirs []string) []helper.App {
 		for _, entry := range entries {
 			appName, ok := strings.CutSuffix(entry.Name(), ".app")
 			if ok {
-				apps = append(apps, helper.App{
+				apps = append(apps, core.App{
 					Name:     appName,
 					Path:     getBinaryPath(dir, appName),
 					IconPath: getIconPath(dir, appName),

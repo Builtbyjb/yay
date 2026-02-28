@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Builtbyjb/yay/pkg/libyay/internal/helper"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 )
 
 // createTempAppDir creates a temporary directory structure mimicking a macOS
@@ -292,9 +292,9 @@ func TestGetAppsNilDirs(t *testing.T) {
 // GetSettings tests (integration with a real in-memory database)
 // ---------------------------------------------------------------------------
 
-func setupTestDatabase(t *testing.T) *helper.Database {
+func setupTestDatabase(t *testing.T) *core.Database {
 	t.Helper()
-	db, err := helper.NewDatabase(":memory:")
+	db, err := core.NewDatabase(":memory:")
 	if err != nil {
 		t.Fatalf("Failed to create database: %v", err)
 	}

@@ -1,0 +1,898 @@
+package tui
+
+import (
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// testSettings returns a reusable slice of settings for tests.
+func testSettings() []ModelSetting {
+	return []ModelSetting{
+		{Id: 1, Name: "Firefox", Mod: "ctrl", Key: "1", Mode: "default", Enabled: true},
+		{Id: 2, Name: "Terminal", Mod: "", Key: "", Mode: "fullscreen", Enabled: true},
+		{Id: 3, Name: "Finder", Mod: "ctrl", Key: "3", Mode: "desktop", Enabled: false},
+		{Id: 4, Name: "Safari", Mod: "", Key: "", Mode: "default", Enabled: true},
+		{Id: 5, Name: "Notes", Mod: "alt", Key: "n", Mode: "default", Enabled: true},
+	}
+}
+
+func keyMsg(key string) tea.KeyMsg {
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
+}
+
+func specialKeyMsg(t tea.KeyType) tea.KeyMsg {
+	return tea.KeyMsg{Type: t}
+}
+
+// sendKey is a small helper that calls Update with a key message and returns
+// the resulting model, failing the test if the type assertion fails.
+func sendKey(t *testing.T, m model, key string) model {
+	t.Helper()
+	var result tea.Model
+	switch key {
+	case "up":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyUp})
+	case "down":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	case "enter":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	case "esc":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEscape})
+	case "backspace":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	case "tab":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	case "ctrl+c":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	case "ctrl+q":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlQ})
+	case " ":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeySpace, Runes: []rune(" ")})
+	case "right":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyRight})
+	case "left":
+		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	default:
+		result, _ = m.Update(keyMsg(key))
+	}
+	return result.(model)
+}
+
+func TestNewModel_DefaultState(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+
+	if m.state != stateBrowse {
+		t.Errorf("expected initial state stateBrowse (%d), got %d", stateBrowse, m.state)
+	}
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0, got %d", m.cursor)
+	}
+	if m.activeCol != colNone {
+		t.Errorf("expected activeCol colNone, got %d", m.activeCol)
+	}
+	if m.version != "0.1.0" {
+		t.Errorf("expected version 0.1.0, got %s", m.version)
+	}
+}
+
+func TestNewModel_AllSettingsVisible(t *testing.T) {
+	settings := testSettings()
+	m := NewModel(settings, "0.1.0")
+
+	if len(m.filteredIndices) != len(settings) {
+		t.Errorf("expected %d filtered indices, got %d", len(settings), len(m.filteredIndices))
+	}
+}
+
+func TestNewModel_EmptySettings(t *testing.T) {
+	m := NewModel([]ModelSetting{}, "1.0.0")
+
+	if len(m.filteredIndices) != 0 {
+		t.Errorf("expected 0 filtered indices, got %d", len(m.filteredIndices))
+	}
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0, got %d", m.cursor)
+	}
+}
+
+func TestNewModel_PreservesSettingData(t *testing.T) {
+	settings := testSettings()
+	m := NewModel(settings, "0.1.0")
+
+	if m.settings[0].Name != "Firefox" {
+		t.Errorf("expected first setting name Firefox, got %s", m.settings[0].Name)
+	}
+	if m.settings[2].Enabled != false {
+		t.Errorf("expected Finder to be disabled")
+	}
+	if m.settings[1].Mode != "fullscreen" {
+		t.Errorf("expected Terminal mode fullscreen, got %s", m.settings[1].Mode)
+	}
+}
+
+func TestUpdateFilter_MatchesSubstring(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.filterInput.SetValue("fire")
+	m.updateFilter()
+
+	if len(m.filteredIndices) != 1 {
+		t.Fatalf("expected 1 match for 'fire', got %d", len(m.filteredIndices))
+	}
+	if m.settings[m.filteredIndices[0]].Name != "Firefox" {
+		t.Errorf("expected Firefox to match, got %s", m.settings[m.filteredIndices[0]].Name)
+	}
+}
+
+func TestUpdateFilter_CaseInsensitive(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.filterInput.SetValue("TERMINAL")
+	m.updateFilter()
+
+	if len(m.filteredIndices) != 1 {
+		t.Fatalf("expected 1 match for 'TERMINAL', got %d", len(m.filteredIndices))
+	}
+	if m.settings[m.filteredIndices[0]].Name != "Terminal" {
+		t.Errorf("expected Terminal, got %s", m.settings[m.filteredIndices[0]].Name)
+	}
+}
+
+func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
+	settings := testSettings()
+	m := NewModel(settings, "0.1.0")
+	m.filterInput.SetValue("")
+	m.updateFilter()
+
+	if len(m.filteredIndices) != len(settings) {
+		t.Errorf("expected all %d settings visible, got %d", len(settings), len(m.filteredIndices))
+	}
+}
+
+func TestUpdateFilter_NoMatch(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.filterInput.SetValue("zzzznotanapp")
+	m.updateFilter()
+
+	if len(m.filteredIndices) != 0 {
+		t.Errorf("expected 0 matches, got %d", len(m.filteredIndices))
+	}
+}
+
+func TestUpdateFilter_MultipleMatches(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	// Both "Firefox" and "Finder" contain "fi" (case-insensitive)
+	m.filterInput.SetValue("fi")
+	m.updateFilter()
+
+	if len(m.filteredIndices) != 2 {
+		t.Fatalf("expected 2 matches for 'fi', got %d", len(m.filteredIndices))
+	}
+}
+
+func TestMoveCursor_Down(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+
+	m = sendKey(t, m, "down")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 after down, got %d", m.cursor)
+	}
+
+	m = sendKey(t, m, "down")
+	if m.cursor != 2 {
+		t.Errorf("expected cursor 2 after second down, got %d", m.cursor)
+	}
+}
+
+func TestMoveCursor_Up(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.cursor = 3
+
+	m = sendKey(t, m, "up")
+	if m.cursor != 2 {
+		t.Errorf("expected cursor 2 after up, got %d", m.cursor)
+	}
+}
+
+func TestMoveCursor_VimKeys(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+
+	m = sendKey(t, m, "j")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 after j, got %d", m.cursor)
+	}
+
+	m = sendKey(t, m, "j")
+	m = sendKey(t, m, "k")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 after j then k, got %d", m.cursor)
+	}
+}
+
+func TestMoveCursor_ClampAtTop(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.cursor = 0
+
+	m = sendKey(t, m, "up")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor clamped at 0, got %d", m.cursor)
+	}
+}
+
+func TestMoveCursor_ClampAtBottom(t *testing.T) {
+	settings := testSettings()
+	m := NewModel(settings, "0.1.0")
+	m.cursor = len(settings) - 1
+
+	m = sendKey(t, m, "down")
+	if m.cursor != len(settings)-1 {
+		t.Errorf("expected cursor clamped at %d, got %d", len(settings)-1, m.cursor)
+	}
+}
+
+func TestMoveCursor_EmptyList(t *testing.T) {
+	m := NewModel([]ModelSetting{}, "0.1.0")
+
+	m = sendKey(t, m, "down")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 on empty list, got %d", m.cursor)
+	}
+
+	m = sendKey(t, m, "up")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 on empty list after up, got %d", m.cursor)
+	}
+}
+
+// ─── State Transitions ───────────────────────────────────────────
+
+func TestBrowse_SlashEntersFilterMode(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/")
+
+	if m.state != stateFilter {
+		t.Errorf("expected stateFilter, got %d", m.state)
+	}
+}
+
+func TestFilter_EscReturnsToBrowse(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/")   // enter filter
+	m = sendKey(t, m, "esc") // leave filter
+
+	if m.state != stateBrowse {
+		t.Errorf("expected stateBrowse after esc, got %d", m.state)
+	}
+}
+
+func TestBrowse_EnterFocusesRow(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")
+
+	if m.state != stateRowFocus {
+		t.Errorf("expected stateRowFocus, got %d", m.state)
+	}
+	if m.activeCol != colMod {
+		t.Errorf("expected activeCol colMod(1) on enter, got %d", m.activeCol)
+	}
+}
+
+func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
+	m := NewModel([]ModelSetting{}, "0.1.0")
+	m = sendKey(t, m, "enter")
+
+	if m.state != stateBrowse {
+		t.Errorf("expected stateBrowse on enter with empty list, got %d", m.state)
+	}
+}
+
+func TestFilter_EnterFocusesRow(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/")     // enter filter
+	m = sendKey(t, m, "enter") // focus row from filter
+
+	if m.state != stateRowFocus {
+		t.Errorf("expected stateRowFocus, got %d", m.state)
+	}
+}
+
+func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row
+	m = sendKey(t, m, "esc")   // unfocus
+
+	if m.state != stateBrowse {
+		t.Errorf("expected stateBrowse after esc, got %d", m.state)
+	}
+	if m.activeCol != colNone {
+		t.Errorf("expected activeCol colNone after esc, got %d", m.activeCol)
+	}
+}
+
+func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")    // focus row
+	m = sendKey(t, m, CANCEL_KEY) // unfocus
+
+	if m.state != stateBrowse {
+		t.Errorf("expected stateBrowse after ctrl+q, got %d", m.state)
+	}
+}
+
+// ─── Column Cycling ──────────────────────────────────────────────
+
+func TestCycleColumn_FullCycle(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row, starts at colHotkey
+
+	if m.activeCol != colMod {
+		t.Fatalf("expected initial column colMod(1), got %d", m.activeCol)
+	}
+
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
+	if m.activeCol != colKey {
+		t.Errorf("expected colKey(2) after first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	}
+
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
+	if m.activeCol != colMode {
+		t.Errorf("expected colMode(3) after second %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	}
+
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
+	if m.activeCol != colEnabled {
+		t.Errorf("expected colEnabled(4) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	}
+
+	// Full cycle
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
+	if m.activeCol != colMod {
+		t.Errorf("expected colMode(1) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	}
+}
+
+func TestCycleColumn_ResetsRecording(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row at colMod
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // Switch to colKey
+	m = sendKey(t, m, "enter")           // Enter to start recording hotkey
+
+	if !m.recordingHotkey {
+		t.Fatal("expected recordingHotkey true after space")
+	}
+
+	// Now we manually set state to test that cycling resets recording
+	// Since SWITCH_COLUMN_KEY goes through handleRowFocusKey which checks recordingHotkey first,
+	// we need to cancel recording first (esc), then cycle
+	m = sendKey(t, m, "esc") // cancel recording
+	if m.recordingHotkey {
+		t.Fatal("expected recordingHotkey false after esc")
+	}
+
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // cycle column
+	if m.recordingHotkey {
+		t.Errorf("expected recordingHotkey false after %s", SWITCH_COLUMN_KEY)
+	}
+}
+
+// ─── Mode Cycling ────────────────────────────────────────────────
+
+func TestCycleModeForward(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	// First setting (Firefox) starts at "default"
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
+
+	if m.activeCol != colMode {
+		t.Fatalf("expected colMode, got %d", m.activeCol)
+	}
+
+	// Cycle forward: default -> fullscreen
+	m = sendKey(t, m, " ")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Mode != "fullscreen" {
+		t.Errorf("expected mode fullscreen, got %s", m.settings[idx].Mode)
+	}
+
+	// Cycle forward: fullscreen -> desktop
+	m = sendKey(t, m, " ")
+	if m.settings[idx].Mode != "desktop" {
+		t.Errorf("expected mode desktop, got %s", m.settings[idx].Mode)
+	}
+
+	// Cycle forward: desktop -> default (wrap)
+	m = sendKey(t, m, " ")
+	if m.settings[idx].Mode != "default" {
+		t.Errorf("expected mode default (wrap), got %s", m.settings[idx].Mode)
+	}
+}
+
+func TestCycleModeForward_WithEnterKey(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
+
+	m = sendKey(t, m, "enter")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Mode != "fullscreen" {
+		t.Errorf("expected mode fullscreen after enter, got %s", m.settings[idx].Mode)
+	}
+}
+
+func TestCycleModeForward_WithRightKey(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
+
+	m = sendKey(t, m, "right")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Mode != "fullscreen" {
+		t.Errorf("expected mode fullscreen after right, got %s", m.settings[idx].Mode)
+	}
+}
+
+func TestCycleModeBackward_WithLeftKey(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
+
+	// default -> left -> desktop (wrap backward)
+	m = sendKey(t, m, "left")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Mode != "desktop" {
+		t.Errorf("expected mode desktop after left (wrap), got %s", m.settings[idx].Mode)
+	}
+}
+
+// ─── Enable Toggling ─────────────────────────────────────────────
+
+func TestToggleEnabled(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	// Firefox starts enabled=true
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
+
+	if m.activeCol != colEnabled {
+		t.Fatalf("expected colEnabled, got %d", m.activeCol)
+	}
+
+	// Toggle: true -> false
+	m = sendKey(t, m, " ")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Enabled != false {
+		t.Errorf("expected enabled=false after toggle, got true")
+	}
+
+	// Toggle: false -> true
+	m = sendKey(t, m, " ")
+	if m.settings[idx].Enabled != true {
+		t.Errorf("expected enabled=true after second toggle, got false")
+	}
+}
+
+func TestToggleEnabled_WithEnterKey(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
+
+	m = sendKey(t, m, "enter")
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Enabled != false {
+		t.Errorf("expected enabled=false after enter toggle")
+	}
+}
+
+// ─── Hotkey Recording ────────────────────────────────────────────
+
+func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row,
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colHotkey
+
+	if m.activeCol != colKey {
+		t.Fatalf("expected colHotkey, got %d", m.activeCol)
+	}
+
+	m = sendKey(t, m, "enter") // start recording
+	if !m.recordingHotkey {
+		t.Errorf("expected recordingHotkey=true after enter")
+	}
+}
+
+func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+
+	if !m.recordingHotkey {
+		t.Errorf("expected recordingHotkey=true after space")
+	}
+}
+
+func TestHotkeyRecording_RecordsKey(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+
+	// Press 'a' to record
+	m = sendKey(t, m, "a")
+
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Key != "a" {
+		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].Key)
+	}
+	if m.recordingHotkey {
+		t.Errorf("expected recordingHotkey=false after recording")
+	}
+}
+
+func TestHotkeyRecording_EscCancels(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+
+	originalHotkey := m.settings[m.filteredIndices[m.cursor]].Key
+
+	m = sendKey(t, m, CANCEL_KEY) // cancel
+
+	if m.recordingHotkey {
+		t.Errorf("expected recordingHotkey=false after esc")
+	}
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Key != originalHotkey {
+		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].Key)
+	}
+}
+
+func TestHotkeyRecording_BackspaceClears(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	// Firefox has hotkey "ctrl+1"
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+	m = sendKey(t, m, "backspace")       // clear hotkey
+
+	idx := m.filteredIndices[m.cursor]
+	if m.settings[idx].Key != "" {
+		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].Key)
+	}
+	if m.recordingHotkey {
+		t.Errorf("expected recordingHotkey=false after backspace clear")
+	}
+}
+
+// ─── Navigation While Focused ────────────────────────────────────
+
+func TestRowFocus_NavigateWithArrowKeys(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row 0
+
+	m = sendKey(t, m, "down") // move to row 1
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 in row focus, got %d", m.cursor)
+	}
+	if m.state != stateRowFocus {
+		t.Errorf("expected to remain in stateRowFocus, got %d", m.state)
+	}
+
+	m = sendKey(t, m, "up")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 in row focus after up, got %d", m.cursor)
+	}
+}
+
+func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus
+	// Move to mode column so j/k don't interfere with hotkey recording
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
+
+	m = sendKey(t, m, "j")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 after j in row focus, got %d", m.cursor)
+	}
+
+	m = sendKey(t, m, "k")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 after k in row focus, got %d", m.cursor)
+	}
+}
+
+// ─── Filter Integration ──────────────────────────────────────────
+
+func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.cursor = 4 // last item
+
+	// Enter filter mode and type a restrictive filter
+	m = sendKey(t, m, "/")
+	// Simulate typing "firefox" by setting value directly and updating
+	m.filterInput.SetValue("firefox")
+	m.updateFilter()
+
+	// Only 1 result ("Firefox"), so cursor must be clamped to 0
+	if len(m.filteredIndices) != 1 {
+		t.Fatalf("expected 1 filtered result, got %d", len(m.filteredIndices))
+	}
+	if m.cursor != 0 {
+		t.Errorf("expected cursor clamped to 0, got %d", m.cursor)
+	}
+}
+
+func TestFilter_NavigateDuringFilter(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/") // enter filter mode
+
+	m = sendKey(t, m, "down")
+	if m.cursor != 1 {
+		t.Errorf("expected cursor 1 during filter, got %d", m.cursor)
+	}
+
+	m = sendKey(t, m, "up")
+	if m.cursor != 0 {
+		t.Errorf("expected cursor 0 during filter after up, got %d", m.cursor)
+	}
+}
+
+// ─── View Rendering ──────────────────────────────────────────────
+
+func TestView_ContainsLogo(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "██") {
+		t.Error("expected view to contain ASCII logo characters")
+	}
+}
+
+func TestView_ContainsVersion(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "0.1.0") {
+		t.Error("expected view to contain version string")
+	}
+}
+
+func TestView_ContainsColumnHeaders(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	for _, header := range []string{"Application", "Modifier", "Key", "Mode", "Enabled"} {
+		if !containsAny(view, header) {
+			t.Errorf("expected view to contain header %q", header)
+		}
+	}
+}
+
+func TestView_ContainsSettingNames(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	for _, s := range testSettings() {
+		if !containsAny(view, s.Name) {
+			t.Errorf("expected view to contain setting name %q", s.Name)
+		}
+	}
+}
+
+func TestView_EmptyListMessage(t *testing.T) {
+	m := NewModel([]ModelSetting{}, "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "No matching") {
+		t.Error("expected view to show empty list message")
+	}
+}
+
+func TestView_ShowsBrowseHelp(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "Navigate") {
+		t.Error("expected browse mode help text")
+	}
+}
+
+func TestView_ShowsFilterHelp(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "Stop Searching") {
+		t.Error("expected filter mode help text")
+	}
+}
+
+func TestView_ShowsRowFocusHelp(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, SWITCH_COLUMN_KEY) {
+		t.Errorf("expected row focus help text with %s", SWITCH_COLUMN_KEY)
+	}
+}
+
+func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter")           // focus row at colMod
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+	m.width = 120
+	m.height = 40
+	view := m.View()
+
+	if !containsAny(view, "Press any key") {
+		t.Error("expected hotkey recording help text")
+	}
+}
+
+// ─── Exit Behavior ───────────────────────────────────────────────
+
+func TestBrowse_CtrlCExits(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
+
+	if cmd == nil {
+		t.Error("expected quit command from ctrl+c in browse mode")
+		return
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Errorf("expected tea.QuitMsg, got %T", msg)
+	}
+}
+
+func TestFilter_CtrlCExits(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "/") // enter filter mode
+
+	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
+	if cmd == nil {
+		t.Error("expected quit command from ctrl+c in filter mode")
+		return
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Errorf("expected tea.QuitMsg, got %T", msg)
+	}
+}
+
+func TestRowFocus_CtrlCExits(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row
+
+	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
+	if cmd == nil {
+		t.Error("expected quit command from ctrl+c in row focus mode")
+		return
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Errorf("expected tea.QuitMsg, got %T", msg)
+	}
+}
+
+// ─── Window Size ─────────────────────────────────────────────────
+
+func TestWindowSize_UpdatesDimensions(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	result, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = result.(model)
+
+	if m.width != 120 {
+		t.Errorf("expected width 120, got %d", m.width)
+	}
+	if m.height != 40 {
+		t.Errorf("expected height 40, got %d", m.height)
+	}
+}
+
+func TestSelectedSetting_ReturnsCorrect(t *testing.T) {
+	m := NewModel(testSettings(), "0.1.0")
+	m.cursor = 2
+
+	s := m.selectedSetting()
+	if s == nil {
+		t.Fatal("expected non-nil selected setting")
+	}
+	if s.Name != "Finder" {
+		t.Errorf("expected Finder, got %s", s.Name)
+	}
+}
+
+func TestSelectedSetting_NilOnEmpty(t *testing.T) {
+	m := NewModel([]ModelSetting{}, "0.1.0")
+
+	s := m.selectedSetting()
+	if s != nil {
+		t.Errorf("expected nil selected setting on empty list, got %+v", s)
+	}
+}
+
+// ─── Utility function tests ──────────────────────────────────────
+
+func TestPadRight(t *testing.T) {
+	tests := []struct {
+		input    string
+		width    int
+		expected string
+	}{
+		{"hi", 5, "hi   "},
+		{"hello", 5, "hello"},
+		{"hello world", 5, "hello"},
+		{"", 3, "   "},
+	}
+	for _, tc := range tests {
+		result := padRight(tc.input, tc.width)
+		if result != tc.expected {
+			t.Errorf("padRight(%q, %d) = %q, want %q", tc.input, tc.width, result, tc.expected)
+		}
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	tests := []struct {
+		input    string
+		maxLen   int
+		expected string
+	}{
+		{"short", 10, "short"},
+		{"a long string", 8, "a lon..."},
+		{"abc", 3, "abc"},
+		{"abcd", 3, "abc"},
+		{"hello", 5, "hello"},
+	}
+	for _, tc := range tests {
+		result := truncate(tc.input, tc.maxLen)
+		if result != tc.expected {
+			t.Errorf("truncate(%q, %d) = %q, want %q", tc.input, tc.maxLen, result, tc.expected)
+		}
+	}
+}
+
+// ─── Helper ──────────────────────────────────────────────────────
+
+func containsAny(haystack, needle string) bool {
+	return len(needle) > 0 && len(haystack) > 0 && contains(haystack, needle)
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && searchString(s, substr)
+}
+
+func searchString(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}

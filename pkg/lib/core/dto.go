@@ -1,4 +1,4 @@
-package helper
+package core
 
 type App struct {
 	Name     string

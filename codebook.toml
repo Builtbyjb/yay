@@ -1,0 +1,5 @@
+dictionaries = ["en_us", "en_gb"]
+flag_words = ["TODO", "NOTE"]
+ignore_paths = ["target/**/*", "**/*.json", ".git/**/*"]
+min_word_length = 3
+words = ["yay", "libyay", "yaykeys", "GOOS", "mkdir", "esc"]
