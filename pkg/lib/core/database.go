@@ -130,7 +130,7 @@ func (d *Database) getExistingPaths() (map[string]struct{}, error) {
 }
 
 func (d *Database) getUpdatedSettings() ([]Setting, error) {
-	updatedRows, err := d.conn.Query("SELECT * FROM settings")
+	updatedRows, err := d.conn.Query("SELECT * FROM settings ORDER BY name ASC")
 	if err != nil {
 		return nil, err
 	}

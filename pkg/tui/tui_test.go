@@ -3,18 +3,17 @@ package tui
 import (
 	"testing"
 
-	lib "github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // testSettings returns a reusable slice of settings for tests.
-func testSettings() []lib.Setting {
-	return []lib.Setting{
-		{Id: 1, Name: "Firefox", Path: "/app/firefox", HotKey: "ctrl+1", Mode: "default", Enabled: true},
-		{Id: 2, Name: "Terminal", Path: "/app/terminal", HotKey: "", Mode: "fullscreen", Enabled: true},
-		{Id: 3, Name: "Finder", Path: "/app/finder", HotKey: "ctrl+3", Mode: "desktop", Enabled: false},
-		{Id: 4, Name: "Safari", Path: "/app/safari", HotKey: "", Mode: "default", Enabled: true},
-		{Id: 5, Name: "Notes", Path: "/app/notes", HotKey: "alt+n", Mode: "default", Enabled: true},
+func testSettings() []ModelSetting {
+	return []ModelSetting{
+		{Id: 1, Name: "Firefox", Mod: "ctrl", Key: "1", Mode: "default", Enabled: true},
+		{Id: 2, Name: "Terminal", Mod: "", Key: "", Mode: "fullscreen", Enabled: true},
+		{Id: 3, Name: "Finder", Mod: "ctrl", Key: "3", Mode: "desktop", Enabled: false},
+		{Id: 4, Name: "Safari", Mod: "", Key: "", Mode: "default", Enabled: true},
+		{Id: 5, Name: "Notes", Mod: "alt", Key: "n", Mode: "default", Enabled: true},
 	}
 }
 
@@ -42,8 +41,6 @@ func sendKey(t *testing.T, m model, key string) model {
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyEscape})
 	case "backspace":
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
-	// case "shift+tab":
-	// 	result, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
 	case "tab":
 		result, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
 	case "ctrl+c":
@@ -61,8 +58,6 @@ func sendKey(t *testing.T, m model, key string) model {
 	}
 	return result.(model)
 }
-
-// ─── Initialization ───────────────────────────────────────────────
 
 func TestNewModel_DefaultState(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
@@ -91,7 +86,7 @@ func TestNewModel_AllSettingsVisible(t *testing.T) {
 }
 
 func TestNewModel_EmptySettings(t *testing.T) {
-	m := NewModel([]lib.Setting{}, "1.0.0")
+	m := NewModel([]ModelSetting{}, "1.0.0")
 
 	if len(m.filteredIndices) != 0 {
 		t.Errorf("expected 0 filtered indices, got %d", len(m.filteredIndices))
@@ -115,8 +110,6 @@ func TestNewModel_PreservesSettingData(t *testing.T) {
 		t.Errorf("expected Terminal mode fullscreen, got %s", m.settings[1].Mode)
 	}
 }
-
-// ─── Filtering ────────────────────────────────────────────────────
 
 func TestUpdateFilter_MatchesSubstring(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
@@ -175,8 +168,6 @@ func TestUpdateFilter_MultipleMatches(t *testing.T) {
 		t.Fatalf("expected 2 matches for 'fi', got %d", len(m.filteredIndices))
 	}
 }
-
-// ─── Cursor Navigation ───────────────────────────────────────────
 
 func TestMoveCursor_Down(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
@@ -239,7 +230,7 @@ func TestMoveCursor_ClampAtBottom(t *testing.T) {
 }
 
 func TestMoveCursor_EmptyList(t *testing.T) {
-	m := NewModel([]lib.Setting{}, "0.1.0")
+	m := NewModel([]ModelSetting{}, "0.1.0")
 
 	m = sendKey(t, m, "down")
 	if m.cursor != 0 {
@@ -280,13 +271,13 @@ func TestBrowse_EnterFocusesRow(t *testing.T) {
 	if m.state != stateRowFocus {
 		t.Errorf("expected stateRowFocus, got %d", m.state)
 	}
-	if m.activeCol != colKey {
-		t.Errorf("expected activeCol colHotkey on enter, got %d", m.activeCol)
+	if m.activeCol != colMod {
+		t.Errorf("expected activeCol colMod(1) on enter, got %d", m.activeCol)
 	}
 }
 
 func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
-	m := NewModel([]lib.Setting{}, "0.1.0")
+	m := NewModel([]ModelSetting{}, "0.1.0")
 	m = sendKey(t, m, "enter")
 
 	if m.state != stateBrowse {
@@ -319,8 +310,8 @@ func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
 
 func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")  // focus row
-	m = sendKey(t, m, "ctrl+q") // unfocus
+	m = sendKey(t, m, "enter")    // focus row
+	m = sendKey(t, m, CANCEL_KEY) // unfocus
 
 	if m.state != stateBrowse {
 		t.Errorf("expected stateBrowse after ctrl+q, got %d", m.state)
@@ -333,30 +324,37 @@ func TestCycleColumn_FullCycle(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row, starts at colHotkey
 
+	if m.activeCol != colMod {
+		t.Fatalf("expected initial column colMod(1), got %d", m.activeCol)
+	}
+
+	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colKey {
-		t.Fatalf("expected initial column colHotkey, got %d", m.activeCol)
+		t.Errorf("expected colKey(2) after first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colMode {
-		t.Errorf("expected colMode after first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+		t.Errorf("expected colMode(3) after second %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colEnabled {
-		t.Errorf("expected colEnabled after second %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+		t.Errorf("expected colEnabled(4) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
+	// Full cycle
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
-	if m.activeCol != colKey {
-		t.Errorf("expected colHotkey after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	if m.activeCol != colMod {
+		t.Errorf("expected colMode(1) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 }
 
 func TestCycleColumn_ResetsRecording(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row at colHotkey
-	m = sendKey(t, m, " ")     // start recording hotkey
+	m = sendKey(t, m, "enter")           // focus row at colMod
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // Switch to colKey
+	m = sendKey(t, m, "enter")           // Enter to start recording hotkey
 
 	if !m.recordingHotkey {
 		t.Fatal("expected recordingHotkey true after space")
@@ -382,6 +380,7 @@ func TestCycleModeForward(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// First setting (Firefox) starts at "default"
 	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	if m.activeCol != colMode {
@@ -411,6 +410,7 @@ func TestCycleModeForward(t *testing.T) {
 func TestCycleModeForward_WithEnterKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "enter")
@@ -423,6 +423,7 @@ func TestCycleModeForward_WithEnterKey(t *testing.T) {
 func TestCycleModeForward_WithRightKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "right")
@@ -435,6 +436,7 @@ func TestCycleModeForward_WithRightKey(t *testing.T) {
 func TestCycleModeBackward_WithLeftKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	// default -> left -> desktop (wrap backward)
@@ -445,33 +447,13 @@ func TestCycleModeBackward_WithLeftKey(t *testing.T) {
 	}
 }
 
-func TestCycleMode_LogsChange(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
-	m = sendKey(t, m, " ")               // cycle mode
-
-	if len(m.changes) != 1 {
-		t.Fatalf("expected 1 change, got %d", len(m.changes))
-	}
-	c := m.changes[0]
-	if c.Field != "mode" {
-		t.Errorf("expected field 'mode', got %s", c.Field)
-	}
-	if c.OldVal != "default" {
-		t.Errorf("expected old value 'default', got %s", c.OldVal)
-	}
-	if c.NewVal != "fullscreen" {
-		t.Errorf("expected new value 'fullscreen', got %s", c.NewVal)
-	}
-}
-
 // ─── Enable Toggling ─────────────────────────────────────────────
 
 func TestToggleEnabled(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// Firefox starts enabled=true
 	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
@@ -496,6 +478,7 @@ func TestToggleEnabled(t *testing.T) {
 func TestToggleEnabled_WithEnterKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
@@ -506,30 +489,12 @@ func TestToggleEnabled_WithEnterKey(t *testing.T) {
 	}
 }
 
-func TestToggleEnabled_LogsChange(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
-	m = sendKey(t, m, " ")               // toggle
-
-	if len(m.changes) != 1 {
-		t.Fatalf("expected 1 change, got %d", len(m.changes))
-	}
-	c := m.changes[0]
-	if c.Field != "enabled" {
-		t.Errorf("expected field 'enabled', got %s", c.Field)
-	}
-	if c.OldVal != "true" || c.NewVal != "false" {
-		t.Errorf("expected 'true'->'false', got %q->%q", c.OldVal, c.NewVal)
-	}
-}
-
 // ─── Hotkey Recording ────────────────────────────────────────────
 
 func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row, colHotkey
+	m = sendKey(t, m, "enter")           // focus row,
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colHotkey
 
 	if m.activeCol != colKey {
 		t.Fatalf("expected colHotkey, got %d", m.activeCol)
@@ -543,8 +508,9 @@ func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
 
 func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row, colHotkey
-	m = sendKey(t, m, " ")     // start recording
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
 
 	if !m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=true after space")
@@ -553,15 +519,16 @@ func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
 
 func TestHotkeyRecording_RecordsKey(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, " ")     // start recording
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
 
 	// Press 'a' to record
 	m = sendKey(t, m, "a")
 
 	idx := m.filteredIndices[m.cursor]
-	if m.settings[idx].HotKey != "a" {
-		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey)
+	if m.settings[idx].Key != "a" {
+		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].Key)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after recording")
@@ -570,72 +537,37 @@ func TestHotkeyRecording_RecordsKey(t *testing.T) {
 
 func TestHotkeyRecording_EscCancels(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, " ")     // start recording
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
 
-	originalHotkey := m.settings[m.filteredIndices[m.cursor]].HotKey
+	originalHotkey := m.settings[m.filteredIndices[m.cursor]].Key
 
-	m = sendKey(t, m, "esc") // cancel
+	m = sendKey(t, m, CANCEL_KEY) // cancel
 
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after esc")
 	}
 	idx := m.filteredIndices[m.cursor]
-	if m.settings[idx].HotKey != originalHotkey {
-		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].HotKey)
+	if m.settings[idx].Key != originalHotkey {
+		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].Key)
 	}
 }
 
 func TestHotkeyRecording_BackspaceClears(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// Firefox has hotkey "ctrl+1"
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, " ")         // start recording
-	m = sendKey(t, m, "backspace") // clear hotkey
+	m = sendKey(t, m, "enter")           // focus row
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
+	m = sendKey(t, m, "backspace")       // clear hotkey
 
 	idx := m.filteredIndices[m.cursor]
-	if m.settings[idx].HotKey != "" {
-		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey)
+	if m.settings[idx].Key != "" {
+		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].Key)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after backspace clear")
-	}
-}
-
-func TestHotkeyRecording_LogsChange(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, " ")     // start recording
-	m = sendKey(t, m, "x")     // record 'x'
-
-	if len(m.changes) != 1 {
-		t.Fatalf("expected 1 change, got %d", len(m.changes))
-	}
-	c := m.changes[0]
-	if c.Field != "hotkey" {
-		t.Errorf("expected field 'hotkey', got %s", c.Field)
-	}
-	if c.NewVal != "x" {
-		t.Errorf("expected new hotkey 'x', got %s", c.NewVal)
-	}
-}
-
-func TestHotkeyRecording_BackspaceClearLogsChange(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	// Firefox starts with hotkey "ctrl+1"
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, " ")         // start recording
-	m = sendKey(t, m, "backspace") // clear
-
-	if len(m.changes) != 1 {
-		t.Fatalf("expected 1 change, got %d", len(m.changes))
-	}
-	c := m.changes[0]
-	if c.Field != "hotkey" {
-		t.Errorf("expected field 'hotkey', got %s", c.Field)
-	}
-	if c.NewVal != "(cleared)" {
-		t.Errorf("expected new value '(cleared)', got %s", c.NewVal)
 	}
 }
 
@@ -742,7 +674,7 @@ func TestView_ContainsColumnHeaders(t *testing.T) {
 	m.height = 40
 	view := m.View()
 
-	for _, header := range []string{"NAME", "HOTKEY", "MODE", "ENABLED"} {
+	for _, header := range []string{"Application", "Modifier", "Key", "Mode", "Enabled"} {
 		if !containsAny(view, header) {
 			t.Errorf("expected view to contain header %q", header)
 		}
@@ -763,7 +695,7 @@ func TestView_ContainsSettingNames(t *testing.T) {
 }
 
 func TestView_EmptyListMessage(t *testing.T) {
-	m := NewModel([]lib.Setting{}, "0.1.0")
+	m := NewModel([]ModelSetting{}, "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -779,7 +711,7 @@ func TestView_ShowsBrowseHelp(t *testing.T) {
 	m.height = 40
 	view := m.View()
 
-	if !containsAny(view, "navigate") {
+	if !containsAny(view, "Navigate") {
 		t.Error("expected browse mode help text")
 	}
 }
@@ -791,7 +723,7 @@ func TestView_ShowsFilterHelp(t *testing.T) {
 	m.height = 40
 	view := m.View()
 
-	if !containsAny(view, "stop filtering") {
+	if !containsAny(view, "Stop Searching") {
 		t.Error("expected filter mode help text")
 	}
 }
@@ -810,8 +742,9 @@ func TestView_ShowsRowFocusHelp(t *testing.T) {
 
 func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row at colHotkey
-	m = sendKey(t, m, " ")     // start recording
+	m = sendKey(t, m, "enter")           // focus row at colMod
+	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
+	m = sendKey(t, m, " ")               // start recording
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -822,21 +755,6 @@ func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
 }
 
 // ─── Exit Behavior ───────────────────────────────────────────────
-
-func TestBrowse_QExits(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	_, cmd := m.Update(keyMsg("q"))
-
-	if cmd == nil {
-		t.Error("expected quit command from q in browse mode")
-		return
-	}
-	// Execute the command to verify it produces a quit message
-	msg := cmd()
-	if _, ok := msg.(tea.QuitMsg); !ok {
-		t.Errorf("expected tea.QuitMsg, got %T", msg)
-	}
-}
 
 func TestBrowse_CtrlCExits(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
@@ -897,36 +815,6 @@ func TestWindowSize_UpdatesDimensions(t *testing.T) {
 	}
 }
 
-// ─── Changes Accumulation ────────────────────────────────────────
-
-func TestMultipleChanges_Accumulated(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-
-	// Change mode on first row
-	m = sendKey(t, m, "enter")           // focus
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
-	m = sendKey(t, m, " ")               // cycle mode
-
-	// Toggle enabled on first row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
-	m = sendKey(t, m, " ")               // toggle
-
-	// Unfocus and move to next row
-	m = sendKey(t, m, "esc")
-	m = sendKey(t, m, "down")
-
-	// Change mode on second row
-	m = sendKey(t, m, "enter")           // focus
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
-	m = sendKey(t, m, " ")               // cycle mode
-
-	if len(m.changes) != 3 {
-		t.Errorf("expected 3 accumulated changes, got %d", len(m.changes))
-	}
-}
-
-// ─── selectedSetting ─────────────────────────────────────────────
-
 func TestSelectedSetting_ReturnsCorrect(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	m.cursor = 2
@@ -941,7 +829,7 @@ func TestSelectedSetting_ReturnsCorrect(t *testing.T) {
 }
 
 func TestSelectedSetting_NilOnEmpty(t *testing.T) {
-	m := NewModel([]lib.Setting{}, "0.1.0")
+	m := NewModel([]ModelSetting{}, "0.1.0")
 
 	s := m.selectedSetting()
 	if s != nil {
@@ -987,37 +875,6 @@ func TestTruncate(t *testing.T) {
 		if result != tc.expected {
 			t.Errorf("truncate(%q, %d) = %q, want %q", tc.input, tc.maxLen, result, tc.expected)
 		}
-	}
-}
-
-func TestFormatBool(t *testing.T) {
-	if formatBool(true) != "true" {
-		t.Error("formatBool(true) should be 'true'")
-	}
-	if formatBool(false) != "false" {
-		t.Error("formatBool(false) should be 'false'")
-	}
-}
-
-func TestDisplayHotkey(t *testing.T) {
-	if displayHotkey("") != "---" {
-		t.Error("empty hotkey should display as '---'")
-	}
-	if displayHotkey("ctrl+a") != "ctrl+a" {
-		t.Error("non-empty hotkey should be returned as-is")
-	}
-}
-
-func TestIndexOf(t *testing.T) {
-	modes := []string{"default", "fullscreen", "desktop"}
-	if indexOf(modes, "fullscreen") != 1 {
-		t.Error("indexOf should find fullscreen at index 1")
-	}
-	if indexOf(modes, "desktop") != 2 {
-		t.Error("indexOf should find desktop at index 2")
-	}
-	if indexOf(modes, "nonexistent") != 0 {
-		t.Error("indexOf should return 0 for unknown values")
 	}
 }
 

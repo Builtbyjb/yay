@@ -13,16 +13,18 @@ func (m model) StatusLineView() string {
 	case stateRowFocus:
 		colName := "none"
 		switch m.activeCol {
+		case colMod:
+			colName = "Modifier"
 		case colKey:
 			if m.recordingHotkey {
-				colName = "hotkey (recording)"
+				colName = "Key (recording)"
 			} else {
-				colName = "hotkey"
+				colName = "Key"
 			}
 		case colMode:
-			colName = "mode"
+			colName = "Mode"
 		case colEnabled:
-			colName = "enabled"
+			colName = "Enabled"
 		}
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,

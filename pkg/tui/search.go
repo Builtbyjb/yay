@@ -1,16 +1,18 @@
 package tui
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c":
+	case EXIT_KEY:
 		return m, tea.Quit
 
-	case "esc":
+	case CANCEL_KEY:
 		m.state = stateBrowse
 		m.filterInput.Blur()
 		return m, nil
@@ -28,7 +30,6 @@ func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.state = stateRowFocus
 			m.activeCol = colKey
 			m.recordingHotkey = false
-			m.pendingMods = ""
 			m.filterInput.Blur()
 		}
 		return m, nil
@@ -77,4 +78,20 @@ func (m model) SearchView() string {
 		lipgloss.Left,
 		contents...,
 	)
+}
+
+func (m *model) updateFilter() {
+	query := strings.ToLower(m.filterInput.Value())
+	m.filteredIndices = make([]int, 0, len(m.settings))
+	for i, s := range m.settings {
+		if query == "" || strings.Contains(strings.ToLower(s.Name), query) {
+			m.filteredIndices = append(m.filteredIndices, i)
+		}
+	}
+	// Clamp cursor to stay within the new filtered list
+	if len(m.filteredIndices) == 0 {
+		m.cursor = 0
+	} else if m.cursor >= len(m.filteredIndices) {
+		m.cursor = len(m.filteredIndices) - 1
+	}
 }

@@ -1,2 +1,4 @@
-# yay
-A rewrite of yaykeys in golang
+# YAY
+A light weight application manager
+
+![YAY](./assets/yay.png)
