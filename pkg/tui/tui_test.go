@@ -815,30 +815,6 @@ func TestWindowSize_UpdatesDimensions(t *testing.T) {
 	}
 }
 
-func TestSelectedSetting_ReturnsCorrect(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m.cursor = 2
-
-	s := m.selectedSetting()
-	if s == nil {
-		t.Fatal("expected non-nil selected setting")
-	}
-	if s.Name != "Finder" {
-		t.Errorf("expected Finder, got %s", s.Name)
-	}
-}
-
-func TestSelectedSetting_NilOnEmpty(t *testing.T) {
-	m := NewModel([]ModelSetting{}, "0.1.0")
-
-	s := m.selectedSetting()
-	if s != nil {
-		t.Errorf("expected nil selected setting on empty list, got %+v", s)
-	}
-}
-
-// ─── Utility function tests ──────────────────────────────────────
-
 func TestPadRight(t *testing.T) {
 	tests := []struct {
 		input    string

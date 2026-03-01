@@ -12,7 +12,7 @@ type model struct {
 	settings        []ModelSetting
 	searchedIndices []int
 	searchInput     textinput.Model
-	cursor          int // position within filteredIndices
+	cursor          int // position within SearchedIndices
 	activeCol       columnID
 	version         string
 	width           int
@@ -54,7 +54,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch m.state {
 		case stateBrowse:
-			// Check if there is any values in the changes list
 			return m.HandleBrowseKey(msg)
 		case stateFilter:
 			return m.SearchUpdate(msg)
@@ -78,15 +77,6 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, contents...)
 }
 
-// selectedSetting returns the currently selected setting, or nil if none.
-func (m *model) selectedSetting() *ModelSetting {
-	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
-		return nil
-	}
-	idx := m.searchedIndices[m.cursor]
-	return &m.settings[idx]
-}
-
 // Starts the TUI
 func Run(settings []lib.Setting, version string) error {
 	modelSettings := mapToModelSetting(settings)
@@ -97,6 +87,8 @@ func Run(settings []lib.Setting, version string) error {
 	if err != nil {
 		return err
 	}
+
+	// fmt.Println(fModel.(model).changes)
 
 	return nil
 }

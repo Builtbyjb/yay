@@ -141,6 +141,7 @@ func (m model) TableView() string {
 func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case EXIT_KEY, CANCEL_KEY:
+		m.saveChanges()
 		return m, tea.Quit
 
 	case "up", "k":
@@ -186,12 +187,14 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case EXIT_KEY:
+		m.saveChanges()
 		return m, tea.Quit
 
 	case CANCEL_KEY:
 		m.state = stateBrowse
 		m.activeCol = colNone
 		m.recordingHotkey = false
+		m.saveChanges()
 		return m, nil
 
 	case SWITCH_COLUMN_KEY:
@@ -390,16 +393,16 @@ func (m *model) saveChanges() {
 
 	updates := []core.Update{}
 
-	for c := range m.changes {
-		change := m.settings[c]
-		hotKey := change.Mod + "+" + change.Key
-		update := core.Update{
-			Id:      change.Id,
+	for _, c := range m.changes {
+		modelSetting := m.settings[c]
+		mod := core.ModifierFromDisplay(modelSetting.Mod)
+		hotKey := mod + "+" + modelSetting.Key
+		updates = append(updates, core.Update{
+			Id:      modelSetting.Id,
 			Hotkey:  hotKey,
-			Mode:    change.Mode,
-			Enabled: change.Enabled,
-		}
-		updates = append(updates, update)
+			Mode:    modelSetting.Mode,
+			Enabled: modelSetting.Enabled,
+		})
 	}
 
 	lib.Update(updates)

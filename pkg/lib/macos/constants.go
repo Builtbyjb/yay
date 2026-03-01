@@ -11,5 +11,3 @@ var AppDirectories = []string{
 	// "/Applications/Python 3.14",
 	// "/System/Library/CoreServices",
 }
-
-// const DatabaseDirectory = "~/Library/Applications\\ support/Yay/db.sqlite3"

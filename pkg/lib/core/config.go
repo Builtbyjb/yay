@@ -49,6 +49,13 @@ var modifierDisplayToInternalMacos = map[string]string{
 	"⌘ Command": ModifierMeta,
 }
 
+var internalToModifierDisplayMacos = map[string]string{
+	ModifierShift: "⇧ Shift",
+	ModifierAlt:   "⌥ Option",
+	ModifierCtrl:  "⌃ Control",
+	ModifierMeta:  "⌘ Command",
+}
+
 var modifierDisplayToInternalLinux = map[string]string{
 	"Shift": ModifierShift,
 	"Alt":   ModifierAlt,
@@ -64,7 +71,7 @@ var modifierDisplayToInternalWindows = map[string]string{
 	"⊞ Win":   ModifierMeta,
 }
 
-func internalModifierFromDisplay(display string) string {
+func ModifierFromDisplay(display string) string {
 	switch runtime.GOOS {
 	case "darwin":
 		return modifierDisplayToInternalMacos[display]
@@ -74,5 +81,18 @@ func internalModifierFromDisplay(display string) string {
 		return modifierDisplayToInternalWindows[display]
 	default:
 		return display // fallback, or handle explicitly
+	}
+}
+
+func DisplayFromModifier(modifier string) string {
+	switch runtime.GOOS {
+	case "darwin":
+		return internalToModifierDisplayMacos[modifier]
+	case "linux":
+		return modifier // Linux display is same as internal
+	case "windows":
+		return modifier // Windows display is same as internal
+	default:
+		return modifier // fallback, or handle explicitly
 	}
 }

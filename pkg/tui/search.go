@@ -10,11 +10,13 @@ import (
 func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case EXIT_KEY:
+		m.saveChanges()
 		return m, tea.Quit
 
 	case CANCEL_KEY:
 		m.state = stateBrowse
 		m.searchInput.Blur()
+		m.saveChanges()
 		return m, nil
 
 	case "up":
