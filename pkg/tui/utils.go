@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	lib "github.com/Builtbyjb/yay/pkg/lib/core"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 )
 
 func padRight(s string, width int) string {
@@ -53,7 +53,7 @@ func indexOf(slice []string, val string) int {
 	return 0
 }
 
-func mapToModelSetting(settings []lib.Setting) []ModelSetting {
+func mapToModelSetting(settings []core.Setting) []ModelSetting {
 	modelSettings := []ModelSetting{}
 
 	for _, s := range settings {
@@ -67,7 +67,7 @@ func mapToModelSetting(settings []lib.Setting) []ModelSetting {
 		modelSettings = append(modelSettings, ModelSetting{
 			Id:      s.Id,
 			Name:    s.Name,
-			Mod:     mod,
+			Mod:     core.DisplayFromModifier(mod),
 			Key:     key,
 			Mode:    s.Mode,
 			Enabled: s.Enabled,

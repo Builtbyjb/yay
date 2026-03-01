@@ -25,15 +25,6 @@ const (
 	colEnabled          // toggle true/false
 )
 
-// changeEntry records a setting change for logging after exit
-type changeEntry struct {
-	Name   string
-	Field  string
-	OldVal string
-	NewVal string
-}
-
-/* Column widths */
 const (
 	colWidthName    = 28
 	colWidthHotkey  = 18

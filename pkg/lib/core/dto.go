@@ -15,3 +15,10 @@ type Setting struct {
 	Mode     string
 	Enabled  bool
 }
+
+type Update struct {
+	Id      int
+	Hotkey  string
+	Mode    string
+	Enabled bool
+}

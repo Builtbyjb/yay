@@ -2,7 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 
+	"github.com/Builtbyjb/yay/pkg/lib"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -19,21 +22,21 @@ func (m model) TableView() string {
 
 	// Calculate scroll window
 	startIdx := 0
-	if len(m.filteredIndices) > maxRows {
+	if len(m.searchedIndices) > maxRows {
 		if m.cursor >= maxRows {
 			startIdx = m.cursor - maxRows + 1
 		}
-		if startIdx+maxRows > len(m.filteredIndices) {
-			startIdx = len(m.filteredIndices) - maxRows
+		if startIdx+maxRows > len(m.searchedIndices) {
+			startIdx = len(m.searchedIndices) - maxRows
 		}
 	}
 
 	endIdx := startIdx + maxRows
-	if endIdx > len(m.filteredIndices) {
-		endIdx = len(m.filteredIndices)
+	if endIdx > len(m.searchedIndices) {
+		endIdx = len(m.searchedIndices)
 	}
 
-	if len(m.filteredIndices) == 0 {
+	if len(m.searchedIndices) == 0 {
 		contents = append(contents, lipgloss.JoinVertical(
 			lipgloss.Left,
 			DimStyle.Render("No matching applications."),
@@ -86,7 +89,7 @@ func (m model) TableView() string {
 
 		// Add only the visible rows
 		for i := startIdx; i < endIdx; i++ {
-			idx := m.filteredIndices[i]
+			idx := m.searchedIndices[i]
 			s := m.settings[idx]
 
 			isCursor := i == m.cursor
@@ -121,10 +124,10 @@ func (m model) TableView() string {
 		))
 
 		// Scroll indicator
-		if len(m.filteredIndices) >= endIdx {
+		if len(m.searchedIndices) >= endIdx {
 			contents = append(contents, lipgloss.JoinVertical(
 				lipgloss.Left,
-				DimStyle.Render(fmt.Sprintf("showing %d-%d of %d", startIdx+1, endIdx, len(m.filteredIndices))),
+				DimStyle.Render(fmt.Sprintf("showing %d-%d of %d", startIdx+1, endIdx, len(m.searchedIndices))),
 			))
 		}
 	}
@@ -138,6 +141,7 @@ func (m model) TableView() string {
 func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case EXIT_KEY, CANCEL_KEY:
+		m.saveChanges()
 		return m, tea.Quit
 
 	case "up", "k":
@@ -153,13 +157,13 @@ func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "end", "G":
-		if len(m.filteredIndices) > 0 {
-			m.cursor = len(m.filteredIndices) - 1
+		if len(m.searchedIndices) > 0 {
+			m.cursor = len(m.searchedIndices) - 1
 		}
 		return m, nil
 
 	case "enter":
-		if len(m.filteredIndices) > 0 {
+		if len(m.searchedIndices) > 0 {
 			m.state = stateRowFocus
 			m.activeCol = colMod
 			m.recordingHotkey = false
@@ -168,7 +172,7 @@ func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case SEARCH_KEY:
 		m.state = stateFilter
-		m.filterInput.Focus()
+		m.searchInput.Focus()
 		return m, nil
 	}
 
@@ -183,12 +187,14 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case EXIT_KEY:
+		m.saveChanges()
 		return m, tea.Quit
 
 	case CANCEL_KEY:
 		m.state = stateBrowse
 		m.activeCol = colNone
 		m.recordingHotkey = false
+		m.saveChanges()
 		return m, nil
 
 	case SWITCH_COLUMN_KEY:
@@ -242,64 +248,52 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) cycleModifierForward() {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	old := m.settings[idx].Mod
 	current := indexOf(AvailableModifiersMacos, old)
 	next := (current + 1) % len(AvailableModifiersMacos)
+
 	m.settings[idx].Mod = AvailableModifiersMacos[next]
-	m.changes = append(m.changes, changeEntry{
-		Name:   m.settings[idx].Name,
-		Field:  "Modifier",
-		OldVal: displayMod(old),
-		NewVal: m.settings[idx].Mod,
-	})
+	m.updateChanges(idx)
 }
 
 func (m *model) cycleModifierBackward() {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	old := m.settings[idx].Mode
 	current := indexOf(AvailableModes, old)
 	next := current - 1
 	if next < 0 {
 		next = len(AvailableModes) - 1
 	}
+
 	m.settings[idx].Mode = AvailableModes[next]
-	m.changes = append(m.changes, changeEntry{
-		Name:   m.settings[idx].Name,
-		Field:  "mode",
-		OldVal: old,
-		NewVal: m.settings[idx].Mode,
-	})
+	m.updateChanges(idx)
 }
 
 func (m *model) cycleModeForward() {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	old := m.settings[idx].Mode
 	current := indexOf(AvailableModes, old)
 	next := (current + 1) % len(AvailableModes)
+
 	m.settings[idx].Mode = AvailableModes[next]
-	m.changes = append(m.changes, changeEntry{
-		Name:   m.settings[idx].Name,
-		Field:  "mode",
-		OldVal: old,
-		NewVal: m.settings[idx].Mode,
-	})
+	m.updateChanges(idx)
 }
 
 func (m *model) cycleModeBackward() {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	old := m.settings[idx].Mode
 	current := indexOf(AvailableModes, old)
 	next := current - 1
@@ -307,12 +301,7 @@ func (m *model) cycleModeBackward() {
 		next = len(AvailableModes) - 1
 	}
 	m.settings[idx].Mode = AvailableModes[next]
-	m.changes = append(m.changes, changeEntry{
-		Name:   m.settings[idx].Name,
-		Field:  "mode",
-		OldVal: old,
-		NewVal: m.settings[idx].Mode,
-	})
+	m.updateChanges(idx)
 }
 
 func (m *model) cycleColumn() {
@@ -330,7 +319,7 @@ func (m *model) cycleColumn() {
 }
 
 func (m *model) moveCursor(delta int) {
-	if len(m.filteredIndices) == 0 {
+	if len(m.searchedIndices) == 0 {
 		m.cursor = 0
 		return
 	}
@@ -338,24 +327,19 @@ func (m *model) moveCursor(delta int) {
 	if m.cursor < 0 {
 		m.cursor = 0
 	}
-	if m.cursor >= len(m.filteredIndices) {
-		m.cursor = len(m.filteredIndices) - 1
+	if m.cursor >= len(m.searchedIndices) {
+		m.cursor = len(m.searchedIndices) - 1
 	}
 }
 
 func (m *model) toggleEnabled() {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	old := m.settings[idx].Enabled
 	m.settings[idx].Enabled = !old
-	m.changes = append(m.changes, changeEntry{
-		Name:   m.settings[idx].Name,
-		Field:  "enabled",
-		OldVal: formatBool(old),
-		NewVal: formatBool(m.settings[idx].Enabled),
-	})
+	m.updateChanges(idx)
 }
 
 func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -369,18 +353,13 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Backspace clears the hotkey
 	if key == "backspace" {
-		if len(m.filteredIndices) > 0 && m.cursor < len(m.filteredIndices) {
-			idx := m.filteredIndices[m.cursor]
+		if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
+			idx := m.searchedIndices[m.cursor]
 			old := m.settings[idx].Key
 			m.settings[idx].Key = ""
 			m.recordingHotkey = false
 			if old != "" {
-				m.changes = append(m.changes, changeEntry{
-					Name:   m.settings[idx].Name,
-					Field:  "hotkey",
-					OldVal: old,
-					NewVal: "(cleared)",
-				})
+				m.updateChanges(idx)
 			}
 		}
 		return m, nil
@@ -392,17 +371,40 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if len(m.filteredIndices) > 0 && m.cursor < len(m.filteredIndices) {
-		idx := m.filteredIndices[m.cursor]
-		old := m.settings[idx].Key
+	if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
+		idx := m.searchedIndices[m.cursor]
 		m.settings[idx].Key = hotkey
 		m.recordingHotkey = false
-		m.changes = append(m.changes, changeEntry{
-			Name:   m.settings[idx].Name,
-			Field:  "hotkey",
-			OldVal: displayKey(old),
-			NewVal: hotkey,
-		})
+		m.updateChanges(idx)
 	}
 	return m, nil
+}
+
+func (m *model) updateChanges(idx int) {
+	if !slices.Contains(m.changes, idx) {
+		m.changes = append(m.changes, idx)
+	}
+}
+
+func (m *model) saveChanges() {
+	if len(m.changes) == 0 {
+		return
+	}
+
+	updates := []core.Update{}
+
+	for _, c := range m.changes {
+		modelSetting := m.settings[c]
+		mod := core.ModifierFromDisplay(modelSetting.Mod)
+		hotKey := mod + "+" + modelSetting.Key
+		updates = append(updates, core.Update{
+			Id:      modelSetting.Id,
+			Hotkey:  hotKey,
+			Mode:    modelSetting.Mode,
+			Enabled: modelSetting.Enabled,
+		})
+	}
+
+	lib.Update(updates)
+	m.changes = []int{}
 }

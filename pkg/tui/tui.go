@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	lib "github.com/Builtbyjb/yay/pkg/lib/core"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,15 +10,15 @@ import (
 type model struct {
 	state           focusState
 	settings        []ModelSetting
-	filteredIndices []int
-	filterInput     textinput.Model
-	cursor          int // position within filteredIndices
+	searchedIndices []int
+	searchInput     textinput.Model
+	cursor          int // position within SearchedIndices
 	activeCol       columnID
 	version         string
 	width           int
 	height          int
-	changes         []changeEntry
-	recordingHotkey bool // true when waiting for the next key press for hotkey
+	changes         []int // Stores indices of settings that have been changed but not yet saved
+	recordingHotkey bool  // true when waiting for the next key press for hotkey
 }
 
 func NewModel(settings []ModelSetting, version string) model {
@@ -32,11 +30,11 @@ func NewModel(settings []ModelSetting, version string) model {
 	m := model{
 		state:       stateBrowse,
 		settings:    settings,
-		filterInput: ti,
+		searchInput: ti,
 		cursor:      0,
 		activeCol:   colNone,
 		version:     version,
-		changes:     []changeEntry{},
+		changes:     []int{},
 	}
 	m.updateFilter()
 	return m
@@ -79,37 +77,18 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, contents...)
 }
 
-// selectedSetting returns the currently selected setting, or nil if none.
-func (m *model) selectedSetting() *ModelSetting {
-	if len(m.filteredIndices) == 0 || m.cursor >= len(m.filteredIndices) {
-		return nil
-	}
-	idx := m.filteredIndices[m.cursor]
-	return &m.settings[idx]
-}
-
-// PrintChanges outputs all recorded changes to stdout
-func PrintChanges(changes []changeEntry) {
-	if len(changes) == 0 {
-		fmt.Println("No changes were made.")
-		return
-	}
-	fmt.Println("\n--- YAY Settings Changes ---")
-	for i, c := range changes {
-		fmt.Printf("  %d. [%s] %s: %q -> %q\n", i+1, c.Name, c.Field, c.OldVal, c.NewVal)
-	}
-	fmt.Printf("Total changes: %d\n", len(changes))
-}
-
 // Starts the TUI
-func Run(settings []lib.Setting, version string) ([]changeEntry, error) {
+func Run(settings []lib.Setting, version string) error {
 	modelSettings := mapToModelSetting(settings)
 	m := NewModel(modelSettings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
-	finalModel, err := p.Run()
+
+	_, err := p.Run()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fm := finalModel.(model)
-	return fm.changes, nil
+
+	// fmt.Println(fModel.(model).changes)
+
+	return nil
 }
