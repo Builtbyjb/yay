@@ -22,11 +22,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	changes, err := tui.Run(settings, VERSION)
-	if err != nil {
+	if err := tui.Run(settings, VERSION); err != nil {
 		fmt.Println("Error running TUI:", err)
 		os.Exit(1)
 	}
-
-	tui.PrintChanges(changes)
 }

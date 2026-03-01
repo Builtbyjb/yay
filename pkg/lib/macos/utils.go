@@ -3,6 +3,8 @@ package macos
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
@@ -63,4 +65,25 @@ func getApps(dirs []string) []core.App {
 		}
 	}
 	return apps
+}
+
+func GetDatabasePath() (string, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	dbPath := filepath.Join(usr.HomeDir, "Library", "Application Support", "Yay", "db.sqlite3")
+
+	dbDir := filepath.Dir(dbPath)
+	// 0755
+	// │││└─ Others: 5 (read + execute)
+	// ││└── Group: 5 (read + execute)
+	// │└─── Owner: 7 (read + write + execute)
+	// └──── Octal prefix: 0
+	err = os.MkdirAll(dbDir, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	return dbPath, nil
 }

@@ -80,16 +80,16 @@ func TestNewModel_AllSettingsVisible(t *testing.T) {
 	settings := testSettings()
 	m := NewModel(settings, "0.1.0")
 
-	if len(m.filteredIndices) != len(settings) {
-		t.Errorf("expected %d filtered indices, got %d", len(settings), len(m.filteredIndices))
+	if len(m.searchedIndices) != len(settings) {
+		t.Errorf("expected %d filtered indices, got %d", len(settings), len(m.searchedIndices))
 	}
 }
 
 func TestNewModel_EmptySettings(t *testing.T) {
 	m := NewModel([]ModelSetting{}, "1.0.0")
 
-	if len(m.filteredIndices) != 0 {
-		t.Errorf("expected 0 filtered indices, got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 0 {
+		t.Errorf("expected 0 filtered indices, got %d", len(m.searchedIndices))
 	}
 	if m.cursor != 0 {
 		t.Errorf("expected cursor 0, got %d", m.cursor)
@@ -113,59 +113,59 @@ func TestNewModel_PreservesSettingData(t *testing.T) {
 
 func TestUpdateFilter_MatchesSubstring(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m.filterInput.SetValue("fire")
+	m.searchInput.SetValue("fire")
 	m.updateFilter()
 
-	if len(m.filteredIndices) != 1 {
-		t.Fatalf("expected 1 match for 'fire', got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 1 {
+		t.Fatalf("expected 1 match for 'fire', got %d", len(m.searchedIndices))
 	}
-	if m.settings[m.filteredIndices[0]].Name != "Firefox" {
-		t.Errorf("expected Firefox to match, got %s", m.settings[m.filteredIndices[0]].Name)
+	if m.settings[m.searchedIndices[0]].Name != "Firefox" {
+		t.Errorf("expected Firefox to match, got %s", m.settings[m.searchedIndices[0]].Name)
 	}
 }
 
 func TestUpdateFilter_CaseInsensitive(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m.filterInput.SetValue("TERMINAL")
+	m.searchInput.SetValue("TERMINAL")
 	m.updateFilter()
 
-	if len(m.filteredIndices) != 1 {
-		t.Fatalf("expected 1 match for 'TERMINAL', got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 1 {
+		t.Fatalf("expected 1 match for 'TERMINAL', got %d", len(m.searchedIndices))
 	}
-	if m.settings[m.filteredIndices[0]].Name != "Terminal" {
-		t.Errorf("expected Terminal, got %s", m.settings[m.filteredIndices[0]].Name)
+	if m.settings[m.searchedIndices[0]].Name != "Terminal" {
+		t.Errorf("expected Terminal, got %s", m.settings[m.searchedIndices[0]].Name)
 	}
 }
 
 func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
 	settings := testSettings()
 	m := NewModel(settings, "0.1.0")
-	m.filterInput.SetValue("")
+	m.searchInput.SetValue("")
 	m.updateFilter()
 
-	if len(m.filteredIndices) != len(settings) {
-		t.Errorf("expected all %d settings visible, got %d", len(settings), len(m.filteredIndices))
+	if len(m.searchedIndices) != len(settings) {
+		t.Errorf("expected all %d settings visible, got %d", len(settings), len(m.searchedIndices))
 	}
 }
 
 func TestUpdateFilter_NoMatch(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
-	m.filterInput.SetValue("zzzznotanapp")
+	m.searchInput.SetValue("zzzznotanapp")
 	m.updateFilter()
 
-	if len(m.filteredIndices) != 0 {
-		t.Errorf("expected 0 matches, got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 0 {
+		t.Errorf("expected 0 matches, got %d", len(m.searchedIndices))
 	}
 }
 
 func TestUpdateFilter_MultipleMatches(t *testing.T) {
 	m := NewModel(testSettings(), "0.1.0")
 	// Both "Firefox" and "Finder" contain "fi" (case-insensitive)
-	m.filterInput.SetValue("fi")
+	m.searchInput.SetValue("fi")
 	m.updateFilter()
 
-	if len(m.filteredIndices) != 2 {
-		t.Fatalf("expected 2 matches for 'fi', got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 2 {
+		t.Fatalf("expected 2 matches for 'fi', got %d", len(m.searchedIndices))
 	}
 }
 
@@ -389,7 +389,7 @@ func TestCycleModeForward(t *testing.T) {
 
 	// Cycle forward: default -> fullscreen
 	m = sendKey(t, m, " ")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Mode != "fullscreen" {
 		t.Errorf("expected mode fullscreen, got %s", m.settings[idx].Mode)
 	}
@@ -414,7 +414,7 @@ func TestCycleModeForward_WithEnterKey(t *testing.T) {
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "enter")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Mode != "fullscreen" {
 		t.Errorf("expected mode fullscreen after enter, got %s", m.settings[idx].Mode)
 	}
@@ -427,7 +427,7 @@ func TestCycleModeForward_WithRightKey(t *testing.T) {
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "right")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Mode != "fullscreen" {
 		t.Errorf("expected mode fullscreen after right, got %s", m.settings[idx].Mode)
 	}
@@ -441,7 +441,7 @@ func TestCycleModeBackward_WithLeftKey(t *testing.T) {
 
 	// default -> left -> desktop (wrap backward)
 	m = sendKey(t, m, "left")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Mode != "desktop" {
 		t.Errorf("expected mode desktop after left (wrap), got %s", m.settings[idx].Mode)
 	}
@@ -463,7 +463,7 @@ func TestToggleEnabled(t *testing.T) {
 
 	// Toggle: true -> false
 	m = sendKey(t, m, " ")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Enabled != false {
 		t.Errorf("expected enabled=false after toggle, got true")
 	}
@@ -483,7 +483,7 @@ func TestToggleEnabled_WithEnterKey(t *testing.T) {
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
 	m = sendKey(t, m, "enter")
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Enabled != false {
 		t.Errorf("expected enabled=false after enter toggle")
 	}
@@ -526,7 +526,7 @@ func TestHotkeyRecording_RecordsKey(t *testing.T) {
 	// Press 'a' to record
 	m = sendKey(t, m, "a")
 
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Key != "a" {
 		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].Key)
 	}
@@ -541,14 +541,14 @@ func TestHotkeyRecording_EscCancels(t *testing.T) {
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
 	m = sendKey(t, m, " ")               // start recording
 
-	originalHotkey := m.settings[m.filteredIndices[m.cursor]].Key
+	originalHotkey := m.settings[m.searchedIndices[m.cursor]].Key
 
 	m = sendKey(t, m, CANCEL_KEY) // cancel
 
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after esc")
 	}
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Key != originalHotkey {
 		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].Key)
 	}
@@ -562,7 +562,7 @@ func TestHotkeyRecording_BackspaceClears(t *testing.T) {
 	m = sendKey(t, m, " ")               // start recording
 	m = sendKey(t, m, "backspace")       // clear hotkey
 
-	idx := m.filteredIndices[m.cursor]
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Key != "" {
 		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].Key)
 	}
@@ -617,12 +617,12 @@ func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
 	// Enter filter mode and type a restrictive filter
 	m = sendKey(t, m, "/")
 	// Simulate typing "firefox" by setting value directly and updating
-	m.filterInput.SetValue("firefox")
+	m.searchInput.SetValue("firefox")
 	m.updateFilter()
 
 	// Only 1 result ("Firefox"), so cursor must be clamped to 0
-	if len(m.filteredIndices) != 1 {
-		t.Fatalf("expected 1 filtered result, got %d", len(m.filteredIndices))
+	if len(m.searchedIndices) != 1 {
+		t.Fatalf("expected 1 filtered result, got %d", len(m.searchedIndices))
 	}
 	if m.cursor != 0 {
 		t.Errorf("expected cursor clamped to 0, got %d", m.cursor)

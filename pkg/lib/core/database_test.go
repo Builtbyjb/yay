@@ -209,14 +209,8 @@ func TestRefreshPreservesCustomSettings(t *testing.T) {
 	id := settings[0].Id
 
 	// Modify the settings for App1
-	if err := db.UpdateHokey(id, "ctrl+a"); err != nil {
+	if err := db.Update(id, "ctrl+a", "default", false); err != nil {
 		t.Fatalf("Failed to update hotkey: %v", err)
-	}
-	if err := db.UpdateMode(id, "custom"); err != nil {
-		t.Fatalf("Failed to update mode: %v", err)
-	}
-	if err := db.UpdateEnabled(id, false); err != nil {
-		t.Fatalf("Failed to update enabled: %v", err)
 	}
 
 	// Refresh with the same app — custom settings should be preserved
@@ -233,8 +227,8 @@ func TestRefreshPreservesCustomSettings(t *testing.T) {
 	if s.HotKey != "ctrl+a" {
 		t.Errorf("Expected hotkey %q, got %q", "ctrl+a", s.HotKey)
 	}
-	if s.Mode != "custom" {
-		t.Errorf("Expected mode %q, got %q", "custom", s.Mode)
+	if s.Mode != "default" {
+		t.Errorf("Expected mode %q, got %q", "default", s.Mode)
 	}
 	if s.Enabled {
 		t.Error("Expected enabled to be false")
@@ -286,176 +280,6 @@ func TestRefreshNoChange(t *testing.T) {
 	// ID should be the same (no re-insert)
 	if settings1[0].Id != settings2[0].Id {
 		t.Errorf("Expected id to remain %d, got %d", settings1[0].Id, settings2[0].Id)
-	}
-}
-
-func TestUpdateHotkey(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-	}
-	settings := seedApps(t, db, apps)
-	id := settings[0].Id
-
-	if err := db.UpdateHokey(id, "ctrl+shift+a"); err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	updated, err := db.getUpdatedSettings()
-	if err != nil {
-		t.Fatalf("Failed to get settings: %v", err)
-	}
-
-	if len(updated) != 1 {
-		t.Fatalf("Expected 1 setting, got %d", len(updated))
-	}
-
-	if updated[0].HotKey != "ctrl+shift+a" {
-		t.Errorf("Expected hotkey %q, got %q", "ctrl+shift+a", updated[0].HotKey)
-	}
-}
-
-func TestUpdateHotkeyNonExistentId(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	// Updating a non-existent row should not error (SQLite UPDATE with no matching rows is not an error)
-	if err := db.UpdateHokey(9999, "ctrl+b"); err != nil {
-		t.Fatalf("Expected no error for non-existent id, got %v", err)
-	}
-}
-
-func TestUpdateMode(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-	}
-	settings := seedApps(t, db, apps)
-	id := settings[0].Id
-
-	if err := db.UpdateMode(id, "turbo"); err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	updated, err := db.getUpdatedSettings()
-	if err != nil {
-		t.Fatalf("Failed to get settings: %v", err)
-	}
-
-	if updated[0].Mode != "turbo" {
-		t.Errorf("Expected mode %q, got %q", "turbo", updated[0].Mode)
-	}
-}
-
-func TestUpdateModeNonExistentId(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	if err := db.UpdateMode(9999, "turbo"); err != nil {
-		t.Fatalf("Expected no error for non-existent id, got %v", err)
-	}
-}
-
-func TestUpdateEnabled(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-	}
-	settings := seedApps(t, db, apps)
-	id := settings[0].Id
-
-	// Default is true, set to false
-	if err := db.UpdateEnabled(id, false); err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	updated, err := db.getUpdatedSettings()
-	if err != nil {
-		t.Fatalf("Failed to get settings: %v", err)
-	}
-
-	if updated[0].Enabled {
-		t.Error("Expected enabled to be false")
-	}
-
-	// Set back to true
-	if err := db.UpdateEnabled(id, true); err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	updated, err = db.getUpdatedSettings()
-	if err != nil {
-		t.Fatalf("Failed to get settings: %v", err)
-	}
-
-	if !updated[0].Enabled {
-		t.Error("Expected enabled to be true")
-	}
-}
-
-func TestUpdateEnabledNonExistentId(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	if err := db.UpdateEnabled(9999, true); err != nil {
-		t.Fatalf("Expected no error for non-existent id, got %v", err)
-	}
-}
-
-func TestMultipleUpdatesOnSameRow(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-	}
-	settings := seedApps(t, db, apps)
-	id := settings[0].Id
-
-	if err := db.UpdateHokey(id, "alt+1"); err != nil {
-		t.Fatalf("UpdateHokey failed: %v", err)
-	}
-	if err := db.UpdateMode(id, "performance"); err != nil {
-		t.Fatalf("UpdateMode failed: %v", err)
-	}
-	if err := db.UpdateEnabled(id, false); err != nil {
-		t.Fatalf("UpdateEnabled failed: %v", err)
-	}
-
-	updated, err := db.getUpdatedSettings()
-	if err != nil {
-		t.Fatalf("Failed to get settings: %v", err)
-	}
-
-	if len(updated) != 1 {
-		t.Fatalf("Expected 1 setting, got %d", len(updated))
-	}
-
-	s := updated[0]
-	if s.HotKey != "alt+1" {
-		t.Errorf("Expected hotkey %q, got %q", "alt+1", s.HotKey)
-	}
-	if s.Mode != "performance" {
-		t.Errorf("Expected mode %q, got %q", "performance", s.Mode)
-	}
-	if s.Enabled {
-		t.Error("Expected enabled to be false")
-	}
-	// Unchanged fields
-	if s.Name != "App1" {
-		t.Errorf("Expected name %q, got %q", "App1", s.Name)
-	}
-	if s.Path != "/usr/bin/app1" {
-		t.Errorf("Expected path %q, got %q", "/usr/bin/app1", s.Path)
-	}
-	if s.IconPath != "/icons/app1.png" {
-		t.Errorf("Expected icon_path %q, got %q", "/icons/app1.png", s.IconPath)
 	}
 }
 

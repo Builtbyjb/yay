@@ -44,21 +44,13 @@ func (d *Database) Close() error {
 	return d.conn.Close()
 }
 
-func (d *Database) UpdateHokey(id int, hotkey string) error {
-	query := "UPDATE settings SET hotkey = ? WHERE id = ?"
-	_, err := d.conn.Exec(query, hotkey, id)
-	return err
-}
-
-func (d *Database) UpdateMode(id int, mode string) error {
-	query := "UPDATE settings SET mode = ? WHERE id = ?"
-	_, err := d.conn.Exec(query, mode, id)
-	return err
-}
-
-func (d *Database) UpdateEnabled(id int, enabled bool) error {
-	query := "UPDATE settings SET enabled = ? WHERE id = ?"
-	_, err := d.conn.Exec(query, enabled, id)
+func (d *Database) Update(id int, hotkey string, mode string, enabled bool) error {
+	query := `
+	UPDATE settings
+	SET hotkey = ?, mode = ?, enabled = ?
+	WHERE id = ?
+	`
+	_, err := d.conn.Exec(query, hotkey, mode, enabled, id)
 	return err
 }
 

@@ -14,7 +14,7 @@ func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case CANCEL_KEY:
 		m.state = stateBrowse
-		m.filterInput.Blur()
+		m.searchInput.Blur()
 		return m, nil
 
 	case "up":
@@ -26,23 +26,23 @@ func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
-		if len(m.filteredIndices) > 0 {
+		if len(m.searchedIndices) > 0 {
 			m.state = stateRowFocus
 			m.activeCol = colKey
 			m.recordingHotkey = false
-			m.filterInput.Blur()
+			m.searchInput.Blur()
 		}
 		return m, nil
 	}
 
 	// Pass key to text input for filtering
 	var cmd tea.Cmd
-	m.filterInput, cmd = m.filterInput.Update(msg)
+	m.searchInput, cmd = m.searchInput.Update(msg)
 	m.updateFilter()
 	// Ensure cursor is in bounds after filter changes
-	if m.cursor >= len(m.filteredIndices) {
-		if len(m.filteredIndices) > 0 {
-			m.cursor = len(m.filteredIndices) - 1
+	if m.cursor >= len(m.searchedIndices) {
+		if len(m.searchedIndices) > 0 {
+			m.cursor = len(m.searchedIndices) - 1
 		} else {
 			m.cursor = 0
 		}
@@ -59,10 +59,10 @@ func (m model) SearchView() string {
 	))
 
 	if m.state == stateFilter {
-		contents = append(contents, m.filterInput.View())
+		contents = append(contents, m.searchInput.View())
 	} else {
 		// Show filter text but not focused
-		filterText := m.filterInput.Value()
+		filterText := m.searchInput.Value()
 		if filterText == "" {
 			filterText = DimStyle.Render("(press / to Search)")
 		} else {
@@ -81,17 +81,17 @@ func (m model) SearchView() string {
 }
 
 func (m *model) updateFilter() {
-	query := strings.ToLower(m.filterInput.Value())
-	m.filteredIndices = make([]int, 0, len(m.settings))
+	query := strings.ToLower(m.searchInput.Value())
+	m.searchedIndices = make([]int, 0, len(m.settings))
 	for i, s := range m.settings {
 		if query == "" || strings.Contains(strings.ToLower(s.Name), query) {
-			m.filteredIndices = append(m.filteredIndices, i)
+			m.searchedIndices = append(m.searchedIndices, i)
 		}
 	}
 	// Clamp cursor to stay within the new filtered list
-	if len(m.filteredIndices) == 0 {
+	if len(m.searchedIndices) == 0 {
 		m.cursor = 0
-	} else if m.cursor >= len(m.filteredIndices) {
-		m.cursor = len(m.filteredIndices) - 1
+	} else if m.cursor >= len(m.searchedIndices) {
+		m.cursor = len(m.searchedIndices) - 1
 	}
 }

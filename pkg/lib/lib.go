@@ -2,9 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"os"
-	"os/user"
-	"path/filepath"
 	"runtime"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
@@ -13,22 +10,9 @@ import (
 
 func Fetch() ([]core.Setting, error) {
 
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-
 	switch runtime.GOOS {
 	case "darwin":
-		dbPath := filepath.Join(usr.HomeDir, "Library", "Application Support", "Yay", "db.sqlite3")
-
-		dbDir := filepath.Dir(dbPath)
-		// 0755
-		// │││└─ Others: 5 (read + execute)
-		// ││└── Group: 5 (read + execute)
-		// │└─── Owner: 7 (read + write + execute)
-		// └──── Octal prefix: 0
-		err = os.MkdirAll(dbDir, 0755)
+		dbPath, err := macos.GetDatabasePath()
 		if err != nil {
 			return nil, err
 		}
@@ -59,4 +43,31 @@ func Fetch() ([]core.Setting, error) {
 	}
 }
 
-// Update function
+func Update(updates []core.Update) {
+	switch runtime.GOOS {
+	case "darwin":
+		dbPath, err := macos.GetDatabasePath()
+		if err != nil {
+			fmt.Printf("Error getting database path: %v\n", err)
+			return
+		}
+
+		database, err := core.NewDatabase(dbPath)
+		if err != nil {
+			fmt.Printf("Error opening database: %v\n", err)
+			return
+		}
+		defer database.Close()
+
+		for _, u := range updates {
+			database.Update(u.Id, u.Hotkey, u.Mode, u.Enabled)
+		}
+
+	case "windows":
+		fmt.Println("Coming Soon...")
+		return
+	default:
+		fmt.Println("Unsupported operating system.")
+		return
+	}
+}
