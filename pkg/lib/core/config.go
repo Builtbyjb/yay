@@ -2,8 +2,6 @@ package core
 
 import "runtime"
 
-// Canonical modifier names understood by the operation
-// (these should match whatever your underlying hotkey engine expects)
 const (
 	ModifierShift = "shift"
 	ModifierAlt   = "alt"
@@ -14,9 +12,7 @@ const (
 // Available modes for the mode column
 var AvailableModes = []string{"default", "fullscreen", "desktop"}
 
-// Human-facing modifiers per OS (what you show in the TUI)
-
-// macOS: standard system symbols
+// macOS
 var AvailableModifiersMacos = []string{
 	"⇧ Shift",
 	"⌥ Option",
@@ -24,7 +20,7 @@ var AvailableModifiersMacos = []string{
 	"⌘ Command",
 }
 
-// Linux: you can keep this text-only if fonts are limited
+// Linux
 var AvailableModifiersLinux = []string{
 	"Shift",
 	"Alt",
@@ -32,7 +28,7 @@ var AvailableModifiersLinux = []string{
 	"Super",
 }
 
-// Windows: with icons for each modifier key
+// Windows
 var AvailableModifiersWindows = []string{
 	"⭡ Shift", // Shift
 	"⎇ Alt",   // Alt
@@ -41,7 +37,6 @@ var AvailableModifiersWindows = []string{
 }
 
 // Mapping from display strings to internal canonical modifier names
-
 var modifierDisplayToInternalMacos = map[string]string{
 	"⇧ Shift":   ModifierShift,
 	"⌥ Option":  ModifierAlt,

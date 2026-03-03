@@ -9,7 +9,7 @@ func (m model) HelpView() string {
 	case stateBrowse:
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
-			HelpStyle.Render("↑/↓/j/k: Navigate | enter: Edit Row | /: Search | ctrl+c: Quit"),
+			HelpStyle.Render("↑/↓/j/k: Navigate | enter: Edit Row | /: Search | esc/ctrl+c: Quit"),
 		)
 	case stateFilter:
 		content = lipgloss.JoinVertical(

@@ -15,10 +15,7 @@ func (m model) TableView() string {
 	contents := []string{}
 
 	// Set table height
-	maxRows := m.height - 20
-	if maxRows < 3 {
-		maxRows = 3
-	}
+	maxRows := max(m.height-20, 3)
 
 	// Calculate scroll window
 	startIdx := 0
@@ -31,10 +28,7 @@ func (m model) TableView() string {
 		}
 	}
 
-	endIdx := startIdx + maxRows
-	if endIdx > len(m.searchedIndices) {
-		endIdx = len(m.searchedIndices)
-	}
+	endIdx := min(startIdx+maxRows, len(m.searchedIndices))
 
 	if len(m.searchedIndices) == 0 {
 		contents = append(contents, lipgloss.JoinVertical(
@@ -265,14 +259,14 @@ func (m *model) cycleModifierBackward() {
 		return
 	}
 	idx := m.searchedIndices[m.cursor]
-	old := m.settings[idx].Mode
-	current := indexOf(AvailableModes, old)
+	old := m.settings[idx].Mod
+	current := indexOf(AvailableModifiersMacos, old)
 	next := current - 1
 	if next < 0 {
-		next = len(AvailableModes) - 1
+		next = len(AvailableModifiersMacos) - 1
 	}
 
-	m.settings[idx].Mode = AvailableModes[next]
+	m.settings[idx].Mod = AvailableModifiersMacos[next]
 	m.updateChanges(idx)
 }
 
