@@ -4,7 +4,7 @@ type ModelSetting struct {
 	Id      int
 	Name    string
 	Mod     string
-	Key     string
+	HotKey  string
 	Mode    string
 	Enabled bool
 }

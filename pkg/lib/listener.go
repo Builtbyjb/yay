@@ -6,6 +6,10 @@ import (
 	hook "github.com/robotn/gohook"
 )
 
+type CustomKeyMsg struct {
+	Event hook.Event
+}
+
 /*
 Features:
 -> If a key is mapped to an app pressing the same key toggles between opened windows of the app

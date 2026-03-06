@@ -37,13 +37,6 @@ func displayKey(h string) string {
 	return h
 }
 
-func displayMod(m string) string {
-	if m == "" {
-		return "---"
-	}
-	return m
-}
-
 func indexOf(slice []string, val string) int {
 	for i, s := range slice {
 		if s == val {
@@ -57,18 +50,10 @@ func mapToModelSetting(settings []core.Setting) []ModelSetting {
 	modelSettings := []ModelSetting{}
 
 	for _, s := range settings {
-		var mod, key string
-		if s.HotKey != "" {
-			keys := strings.Split(s.HotKey, "+")
-			mod = keys[0]
-			key = keys[1]
-		}
-
 		modelSettings = append(modelSettings, ModelSetting{
 			Id:      s.Id,
 			Name:    s.Name,
-			Mod:     core.DisplayFromModifier(mod),
-			Key:     key,
+			HotKey:  s.HotKey,
 			Mode:    s.Mode,
 			Enabled: s.Enabled,
 		})

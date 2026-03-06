@@ -1,9 +1,9 @@
 package tui
 
-var AvailableModes = []string{"default", "fullscreen", "desktop"}
+var AvailableModes = []string{"default", "desktop"}
 
-var AvailableModifiersMacos = []string{"⇧ Shift", "⌥ Option", "⌃ Control", "⌘ Command"}
-var AvailableModifiersWindows = []string{"⭡ Shift", "⎇ Alt", "⌃ Ctrl", "⊞ Win"}
+var AvailableModifiersMacos = []string{"Shift", "Option", "Control", "Command"}
+var AvailableModifiersWindows = []string{"Shift", "Alt", "Ctrl", "Win"}
 
 // Focus states for the TUI
 type focusState int
@@ -19,7 +19,6 @@ type columnID int
 
 const (
 	colNone    columnID = iota
-	colMod              // cycle modifier keys
 	colKey              // listening for hotkey input
 	colMode             // cycle through modes
 	colEnabled          // toggle true/false
