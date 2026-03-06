@@ -50,7 +50,7 @@ var startCmd = &cobra.Command{
 	Short: "Start background daemon",
 	// Long:  `Start the application with the specified settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Starting the application...")
+		lib.Listener()
 	},
 }
 
