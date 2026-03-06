@@ -18,10 +18,12 @@ var rootCmd = &cobra.Command{
 	// Long:  "A longer description that spans multiple lines and likely contains",
 	Run: func(cmd *cobra.Command, args []string) {
 		db, settings, err := lib.Fetch()
+
 		if err != nil {
 			fmt.Println("Error occurred while fetching applications:", err)
 			os.Exit(1)
 		}
+		defer db.Close()
 
 		if settings == nil {
 			fmt.Println("No applications found.")

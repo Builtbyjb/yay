@@ -203,9 +203,17 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if msg.String() == "enter" || msg.String() == " " {
 			m.recordingHotkey = true
 		} else if msg.String() == "delete" {
-			// TODO
-			// Set the modelSetting to an empty string
-			// Update the database
+			if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
+				return m, nil
+			}
+			idx := m.searchedIndices[m.cursor]
+			settingId := m.settings[idx].Id
+			err := m.db.ClearHotkey(settingId)
+			m.settings[idx].HotKey = ""
+
+			if err != nil {
+				m.errors = append(m.errors, err.Error())
+			}
 		}
 		return m, nil
 	case colMode:
@@ -312,6 +320,7 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// TODO: May no longer be needed
 func (m *model) updateChanges(idx int) {
 	if !slices.Contains(m.changes, idx) {
 		m.changes = append(m.changes, idx)

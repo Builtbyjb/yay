@@ -23,8 +23,9 @@ type model struct {
 	width           int
 	height          int
 	changes         []int // Stores indices of settings that have been changed but not yet saved
+	recordingHotkey bool  // true when waiting for the next key press for hotkey
+	errors          []string
 	debug           []int
-	recordingHotkey bool // true when waiting for the next key press for hotkey
 }
 
 func NewModel(db *core.Database, settings []core.Setting, version string) model {
@@ -42,6 +43,7 @@ func NewModel(db *core.Database, settings []core.Setting, version string) model 
 		activeCol:   colNone,
 		version:     version,
 		changes:     []int{},
+		errors:      []string{},
 		debug:       []int{},
 	}
 	m.updateFilter()
@@ -107,6 +109,7 @@ func Run(db *core.Database, settings []core.Setting, version string) error {
 		return err
 	}
 
+	fmt.Println(fModel.(model).errors)
 	fmt.Println(fModel.(model).debug)
 
 	return nil

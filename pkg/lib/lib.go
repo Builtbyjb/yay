@@ -21,7 +21,6 @@ func Fetch() (*core.Database, []core.Setting, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		defer db.Close()
 
 		if err := db.Init(); err != nil {
 			return nil, nil, err

@@ -15,9 +15,9 @@ func (m model) StatusLineView() string {
 		switch m.activeCol {
 		case colKey:
 			if m.recordingHotkey {
-				colName = "Key (recording)"
+				colName = "HotKey (recording)"
 			} else {
-				colName = "Key"
+				colName = "HotKey"
 			}
 		case colMode:
 			colName = "Mode"

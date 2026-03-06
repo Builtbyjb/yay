@@ -51,8 +51,8 @@ func (d *Database) Update(id int, hotkey string, mode string, enabled bool) erro
 }
 
 func (d *Database) ClearHotkey(id int) error {
-	query := "UPDATE settings SET hotkey = NULL WHERE id = ?"
-	_, err := d.conn.Exec(query, id)
+	query := "UPDATE settings SET hotkey = ? WHERE id = ?"
+	_, err := d.conn.Exec(query, "", id)
 	return err
 }
 
