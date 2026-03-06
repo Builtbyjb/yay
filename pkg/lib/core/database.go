@@ -28,7 +28,7 @@ func (d *Database) Init() error {
 		path TEXT NOT NULL,
 		icon_path TEXT NOT NULL,
 		hotkey TEXT,
-		mode TEXT,
+		mode TEXT CHECK(mode IN ('default', 'desktop')),
 		enabled BOOLEAN
 	);
 	`
