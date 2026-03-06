@@ -1,6 +1,7 @@
 package core
 
 import (
+	"database/sql"
 	"testing"
 )
 
@@ -111,8 +112,8 @@ func TestRefreshInsertsNewApps(t *testing.T) {
 		if s.IconPath != apps[i].IconPath {
 			t.Errorf("Expected icon_path %q, got %q", apps[i].IconPath, s.IconPath)
 		}
-		if s.HotKey != "" {
-			t.Errorf("Expected empty hotkey, got %q", s.HotKey)
+		if s.HotKey != (sql.NullString{}) {
+			t.Errorf("Expected empty hotkey, got %q", s.HotKey.String)
 		}
 		if s.Mode != "default" {
 			t.Errorf("Expected mode %q, got %q", "default", s.Mode)
@@ -205,12 +206,21 @@ func TestRefreshPreservesCustomSettings(t *testing.T) {
 	apps := []App{
 		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
 	}
+
 	settings := seedApps(t, db, apps)
 	id := settings[0].Id
 
 	// Modify the settings for App1
-	if err := db.Update(id, "ctrl+a", "default", false); err != nil {
+	if err := db.UpdateHotkey(id, sql.NullString{String: "ctrl+a", Valid: true}); err != nil {
 		t.Fatalf("Failed to update hotkey: %v", err)
+	}
+
+	if err := db.UpdateMode(id, "default"); err != nil {
+		t.Fatalf("Failed to update mode: %v", err)
+	}
+
+	if err := db.UpdateEnabled(id, false); err != nil {
+		t.Fatalf("Failed to update enabled: %v", err)
 	}
 
 	// Refresh with the same app — custom settings should be preserved
@@ -224,8 +234,8 @@ func TestRefreshPreservesCustomSettings(t *testing.T) {
 	}
 
 	s := refreshed[0]
-	if s.HotKey != "ctrl+a" {
-		t.Errorf("Expected hotkey %q, got %q", "ctrl+a", s.HotKey)
+	if s.HotKey != (sql.NullString{String: "ctrl+a", Valid: true}) {
+		t.Errorf("Expected hotkey %q, got %q", "ctrl+a", s.HotKey.String)
 	}
 	if s.Mode != "default" {
 		t.Errorf("Expected mode %q, got %q", "default", s.Mode)

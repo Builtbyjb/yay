@@ -41,32 +41,3 @@ func Fetch() (*core.Database, []core.Setting, error) {
 		return nil, nil, nil
 	}
 }
-
-func Update(updates []core.Update) {
-	switch runtime.GOOS {
-	case "darwin":
-		dbPath, err := macos.GetDatabasePath()
-		if err != nil {
-			fmt.Printf("Error getting database path: %v\n", err)
-			return
-		}
-
-		database, err := core.NewDatabase(dbPath)
-		if err != nil {
-			fmt.Printf("Error opening database: %v\n", err)
-			return
-		}
-		defer database.Close()
-
-		for _, u := range updates {
-			database.Update(u.Id, u.Hotkey, u.Mode, u.Enabled)
-		}
-
-	case "windows":
-		fmt.Println("Coming Soon...")
-		return
-	default:
-		fmt.Println("Unsupported operating system.")
-		return
-	}
-}

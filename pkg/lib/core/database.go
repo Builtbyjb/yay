@@ -20,19 +20,24 @@ func NewDatabase(dbPath string) (*Database, error) {
 }
 
 func (d *Database) Init() error {
-	// Create settings table if it doesn't exist
 	createTableQuery := `
 	CREATE TABLE IF NOT EXISTS settings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
 		path TEXT NOT NULL,
 		icon_path TEXT NOT NULL,
-		hotkey TEXT,
+		hotkey TEXT UNIQUE,
 		mode TEXT CHECK(mode IN ('default', 'desktop')),
 		enabled BOOLEAN
-	);
-	`
+	);`
+
 	_, err := d.conn.Exec(createTableQuery)
+	if err != nil {
+		return err
+	}
+
+	createHotkeyIndex := `CREATE INDEX IF NOT EXISTS idx_hotkey ON settings (hotkey)`
+	_, err = d.conn.Exec(createHotkeyIndex)
 	if err != nil {
 		return err
 	}
@@ -44,15 +49,29 @@ func (d *Database) Close() error {
 	return d.conn.Close()
 }
 
-func (d *Database) Update(id int, hotkey string, mode string, enabled bool) error {
-	query := "UPDATE settings SET hotkey = ?, mode = ?, enabled = ? WHERE id = ? "
-	_, err := d.conn.Exec(query, hotkey, mode, enabled, id)
+func (d *Database) UpdateEnabled(id int, enabled bool) error {
+	query := "UPDATE settings SET enabled = ? WHERE id = ? "
+	_, err := d.conn.Exec(query, enabled, id)
+	return err
+}
+
+func (d *Database) UpdateMode(id int, mode string) error {
+	query := "update settings set mode = ? where id = ? "
+	_, err := d.conn.Exec(query, mode, id)
+	return err
+}
+
+// TODO: findHotkey
+
+func (d *Database) UpdateHotkey(id int, hotkey sql.NullString) error {
+	query := "UPDATE settings SET hotkey = ? WHERE id = ? "
+	_, err := d.conn.Exec(query, hotkey, id)
 	return err
 }
 
 func (d *Database) ClearHotkey(id int) error {
 	query := "UPDATE settings SET hotkey = ? WHERE id = ?"
-	_, err := d.conn.Exec(query, "", id)
+	_, err := d.conn.Exec(query, nil, id)
 	return err
 }
 
@@ -74,7 +93,7 @@ func (d *Database) Refresh(apps []App) ([]Setting, error) {
 		if _, exists := existingPaths[app.Path]; !exists {
 			_, err := d.conn.Exec(
 				"INSERT INTO settings (name, path, icon_path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)",
-				app.Name, app.Path, app.IconPath, "", "default", true,
+				app.Name, app.Path, app.IconPath, sql.NullString{String: "", Valid: false}, "default", true,
 			)
 			if err != nil {
 				return nil, err

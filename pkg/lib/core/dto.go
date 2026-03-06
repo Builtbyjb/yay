@@ -1,5 +1,7 @@
 package core
 
+import "database/sql"
+
 type App struct {
 	Name     string
 	Path     string
@@ -11,7 +13,7 @@ type Setting struct {
 	Name     string
 	Path     string
 	IconPath string
-	HotKey   string
+	HotKey   sql.NullString
 	Mode     string
 	Enabled  bool
 }
