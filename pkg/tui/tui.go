@@ -1,15 +1,20 @@
 package tui
 
 import (
-	lib "github.com/Builtbyjb/yay/pkg/lib/core"
+	"fmt"
+
+	"github.com/Builtbyjb/yay/pkg/lib"
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	hook "github.com/robotn/gohook"
 )
 
 type model struct {
+	db              *core.Database
 	state           focusState
-	settings        []ModelSetting
+	settings        []core.Setting
 	searchedIndices []int
 	searchInput     textinput.Model
 	cursor          int // position within SearchedIndices
@@ -19,15 +24,18 @@ type model struct {
 	height          int
 	changes         []int // Stores indices of settings that have been changed but not yet saved
 	recordingHotkey bool  // true when waiting for the next key press for hotkey
+	errors          []string
+	debug           []int
 }
 
-func NewModel(settings []ModelSetting, version string) model {
+func NewModel(db *core.Database, settings []core.Setting, version string) model {
 	ti := textinput.New()
 	ti.Placeholder = "Type to Search..."
 	ti.CharLimit = 64
 	ti.Width = 40
 
 	m := model{
+		db:          db,
 		state:       stateBrowse,
 		settings:    settings,
 		searchInput: ti,
@@ -35,6 +43,8 @@ func NewModel(settings []ModelSetting, version string) model {
 		activeCol:   colNone,
 		version:     version,
 		changes:     []int{},
+		errors:      []string{},
+		debug:       []int{},
 	}
 	m.updateFilter()
 	return m
@@ -61,13 +71,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleRowFocusKey(msg)
 		}
 		return m, nil
+	case lib.CustomKeyMsg:
+		if m.recordingHotkey && msg.Event.Kind == hook.KeyDown {
+			m.debug = append(m.debug, int(msg.Event.Rawcode))
+		}
 	}
 	return m, nil
 }
 
 func (m model) View() string {
 	contents := []string{}
-
 	contents = append(contents, m.HeaderView())
 	contents = append(contents, m.SearchView())
 	contents = append(contents, m.TableView())
@@ -78,17 +91,26 @@ func (m model) View() string {
 }
 
 // Starts the TUI
-func Run(settings []lib.Setting, version string) error {
-	modelSettings := mapToModelSetting(settings)
-	m := NewModel(modelSettings, version)
+func Run(db *core.Database, settings []core.Setting, version string) error {
+	m := NewModel(db, settings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
-	_, err := p.Run()
+	go func() {
+		eventChan := hook.Start()
+		defer hook.End()
+
+		for event := range eventChan {
+			p.Send(lib.CustomKeyMsg{Event: event})
+		}
+	}()
+
+	fModel, err := p.Run()
 	if err != nil {
 		return err
 	}
 
-	// fmt.Println(fModel.(model).changes)
+	fmt.Println(fModel.(model).errors)
+	fmt.Println(fModel.(model).debug)
 
 	return nil
 }

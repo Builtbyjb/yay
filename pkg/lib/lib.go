@@ -8,38 +8,37 @@ import (
 	"github.com/Builtbyjb/yay/pkg/lib/macos"
 )
 
-func Fetch() ([]core.Setting, error) {
+func Fetch() (*core.Database, []core.Setting, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
 		dbPath, err := macos.GetDatabasePath()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		database, err := core.NewDatabase(dbPath)
+		db, err := core.NewDatabase(dbPath)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		defer database.Close()
 
-		if err := database.Init(); err != nil {
-			return nil, err
+		if err := db.Init(); err != nil {
+			return nil, nil, err
 		}
 
 		dirs := macos.AppDirectories
-		settings, err := macos.GetSettings(*database, dirs)
+		settings, err := macos.GetSettings(*db, dirs)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return settings, nil
+		return db, settings, nil
 
 	case "windows":
 		fmt.Println("Coming Soon...")
-		return nil, nil
+		return nil, nil, nil
 	default:
 		fmt.Println("Unsupported operating system.")
-		return nil, nil
+		return nil, nil, nil
 	}
 }
 

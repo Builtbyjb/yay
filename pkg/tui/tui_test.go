@@ -3,17 +3,18 @@ package tui
 import (
 	"testing"
 
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 // testSettings returns a reusable slice of settings for tests.
-func testSettings() []ModelSetting {
-	return []ModelSetting{
-		{Id: 1, Name: "Firefox", Mod: "ctrl", Key: "1", Mode: "default", Enabled: true},
-		{Id: 2, Name: "Terminal", Mod: "", Key: "", Mode: "fullscreen", Enabled: true},
-		{Id: 3, Name: "Finder", Mod: "ctrl", Key: "3", Mode: "desktop", Enabled: false},
-		{Id: 4, Name: "Safari", Mod: "", Key: "", Mode: "default", Enabled: true},
-		{Id: 5, Name: "Notes", Mod: "alt", Key: "n", Mode: "default", Enabled: true},
+func testSettings() []core.Setting {
+	return []core.Setting{
+		{Id: 1, Name: "Firefox", HotKey: "ctrl+1", Mode: "default", Enabled: true},
+		{Id: 2, Name: "Terminal", HotKey: "", Mode: "fullscreen", Enabled: true},
+		{Id: 3, Name: "Finder", HotKey: "ctrl+3", Mode: "desktop", Enabled: false},
+		{Id: 4, Name: "Safari", HotKey: "", Mode: "default", Enabled: true},
+		{Id: 5, Name: "Notes", HotKey: "alt+n", Mode: "default", Enabled: true},
 	}
 }
 
@@ -60,7 +61,7 @@ func sendKey(t *testing.T, m model, key string) model {
 }
 
 func TestNewModel_DefaultState(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 
 	if m.state != stateBrowse {
 		t.Errorf("expected initial state stateBrowse (%d), got %d", stateBrowse, m.state)
@@ -78,7 +79,7 @@ func TestNewModel_DefaultState(t *testing.T) {
 
 func TestNewModel_AllSettingsVisible(t *testing.T) {
 	settings := testSettings()
-	m := NewModel(settings, "0.1.0")
+	m := NewModel(nil, settings, "0.1.0")
 
 	if len(m.searchedIndices) != len(settings) {
 		t.Errorf("expected %d filtered indices, got %d", len(settings), len(m.searchedIndices))
@@ -86,7 +87,7 @@ func TestNewModel_AllSettingsVisible(t *testing.T) {
 }
 
 func TestNewModel_EmptySettings(t *testing.T) {
-	m := NewModel([]ModelSetting{}, "1.0.0")
+	m := NewModel(nil, []core.Setting{}, "1.0.0")
 
 	if len(m.searchedIndices) != 0 {
 		t.Errorf("expected 0 filtered indices, got %d", len(m.searchedIndices))
@@ -98,7 +99,7 @@ func TestNewModel_EmptySettings(t *testing.T) {
 
 func TestNewModel_PreservesSettingData(t *testing.T) {
 	settings := testSettings()
-	m := NewModel(settings, "0.1.0")
+	m := NewModel(nil, settings, "0.1.0")
 
 	if m.settings[0].Name != "Firefox" {
 		t.Errorf("expected first setting name Firefox, got %s", m.settings[0].Name)
@@ -112,7 +113,7 @@ func TestNewModel_PreservesSettingData(t *testing.T) {
 }
 
 func TestUpdateFilter_MatchesSubstring(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.searchInput.SetValue("fire")
 	m.updateFilter()
 
@@ -125,7 +126,7 @@ func TestUpdateFilter_MatchesSubstring(t *testing.T) {
 }
 
 func TestUpdateFilter_CaseInsensitive(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.searchInput.SetValue("TERMINAL")
 	m.updateFilter()
 
@@ -139,7 +140,7 @@ func TestUpdateFilter_CaseInsensitive(t *testing.T) {
 
 func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
 	settings := testSettings()
-	m := NewModel(settings, "0.1.0")
+	m := NewModel(nil, settings, "0.1.0")
 	m.searchInput.SetValue("")
 	m.updateFilter()
 
@@ -149,7 +150,7 @@ func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
 }
 
 func TestUpdateFilter_NoMatch(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.searchInput.SetValue("zzzznotanapp")
 	m.updateFilter()
 
@@ -159,7 +160,7 @@ func TestUpdateFilter_NoMatch(t *testing.T) {
 }
 
 func TestUpdateFilter_MultipleMatches(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	// Both "Firefox" and "Finder" contain "fi" (case-insensitive)
 	m.searchInput.SetValue("fi")
 	m.updateFilter()
@@ -170,7 +171,7 @@ func TestUpdateFilter_MultipleMatches(t *testing.T) {
 }
 
 func TestMoveCursor_Down(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 
 	m = sendKey(t, m, "down")
 	if m.cursor != 1 {
@@ -184,7 +185,7 @@ func TestMoveCursor_Down(t *testing.T) {
 }
 
 func TestMoveCursor_Up(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.cursor = 3
 
 	m = sendKey(t, m, "up")
@@ -194,7 +195,7 @@ func TestMoveCursor_Up(t *testing.T) {
 }
 
 func TestMoveCursor_VimKeys(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 
 	m = sendKey(t, m, "j")
 	if m.cursor != 1 {
@@ -209,7 +210,7 @@ func TestMoveCursor_VimKeys(t *testing.T) {
 }
 
 func TestMoveCursor_ClampAtTop(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.cursor = 0
 
 	m = sendKey(t, m, "up")
@@ -220,7 +221,7 @@ func TestMoveCursor_ClampAtTop(t *testing.T) {
 
 func TestMoveCursor_ClampAtBottom(t *testing.T) {
 	settings := testSettings()
-	m := NewModel(settings, "0.1.0")
+	m := NewModel(nil, settings, "0.1.0")
 	m.cursor = len(settings) - 1
 
 	m = sendKey(t, m, "down")
@@ -230,7 +231,7 @@ func TestMoveCursor_ClampAtBottom(t *testing.T) {
 }
 
 func TestMoveCursor_EmptyList(t *testing.T) {
-	m := NewModel([]ModelSetting{}, "0.1.0")
+	m := NewModel(nil, []core.Setting{}, "0.1.0")
 
 	m = sendKey(t, m, "down")
 	if m.cursor != 0 {
@@ -246,7 +247,7 @@ func TestMoveCursor_EmptyList(t *testing.T) {
 // ─── State Transitions ───────────────────────────────────────────
 
 func TestBrowse_SlashEntersFilterMode(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/")
 
 	if m.state != stateFilter {
@@ -255,7 +256,7 @@ func TestBrowse_SlashEntersFilterMode(t *testing.T) {
 }
 
 func TestFilter_EscReturnsToBrowse(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/")   // enter filter
 	m = sendKey(t, m, "esc") // leave filter
 
@@ -265,19 +266,19 @@ func TestFilter_EscReturnsToBrowse(t *testing.T) {
 }
 
 func TestBrowse_EnterFocusesRow(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")
 
 	if m.state != stateRowFocus {
 		t.Errorf("expected stateRowFocus, got %d", m.state)
 	}
-	if m.activeCol != colMod {
-		t.Errorf("expected activeCol colMod(1) on enter, got %d", m.activeCol)
+	if m.activeCol != colKey {
+		t.Errorf("expected activeCol colKey(1) on enter, got %d", m.activeCol)
 	}
 }
 
 func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
-	m := NewModel([]ModelSetting{}, "0.1.0")
+	m := NewModel(nil, []core.Setting{}, "0.1.0")
 	m = sendKey(t, m, "enter")
 
 	if m.state != stateBrowse {
@@ -286,7 +287,7 @@ func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
 }
 
 func TestFilter_EnterFocusesRow(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/")     // enter filter
 	m = sendKey(t, m, "enter") // focus row from filter
 
@@ -296,9 +297,9 @@ func TestFilter_EnterFocusesRow(t *testing.T) {
 }
 
 func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, "esc")   // unfocus
+	m = sendKey(t, m, "esc")   // un-focus
 
 	if m.state != stateBrowse {
 		t.Errorf("expected stateBrowse after esc, got %d", m.state)
@@ -309,9 +310,9 @@ func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
 }
 
 func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")    // focus row
-	m = sendKey(t, m, CANCEL_KEY) // unfocus
+	m = sendKey(t, m, CANCEL_KEY) // un-focus
 
 	if m.state != stateBrowse {
 		t.Errorf("expected stateBrowse after ctrl+q, got %d", m.state)
@@ -321,40 +322,34 @@ func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
 // ─── Column Cycling ──────────────────────────────────────────────
 
 func TestCycleColumn_FullCycle(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row, starts at colHotkey
 
-	if m.activeCol != colMod {
-		t.Fatalf("expected initial column colMod(1), got %d", m.activeCol)
-	}
-
-	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colKey {
-		t.Errorf("expected colKey(2) after first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+		t.Errorf("expected colKey(1) first %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colMode {
-		t.Errorf("expected colMode(3) after second %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
+		t.Errorf("expected colMode(2) %s, got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
 	if m.activeCol != colEnabled {
-		t.Errorf("expected colEnabled(4) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
+		t.Errorf("expected colEnabled(3) %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 
 	// Full cycle
 	m = sendKey(t, m, SWITCH_COLUMN_KEY)
-	if m.activeCol != colMod {
-		t.Errorf("expected colMode(1) after third %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
+	if m.activeCol != colKey {
+		t.Errorf("expected colKey(1) after full cycle %s (wrap), got %d", SWITCH_COLUMN_KEY, m.activeCol)
 	}
 }
 
 func TestCycleColumn_ResetsRecording(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row at colMod
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // Switch to colKey
-	m = sendKey(t, m, "enter")           // Enter to start recording hotkey
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row at colKey
+	m = sendKey(t, m, "enter") // Enter to start recording hotkey
 
 	if !m.recordingHotkey {
 		t.Fatal("expected recordingHotkey true after space")
@@ -377,22 +372,16 @@ func TestCycleColumn_ResetsRecording(t *testing.T) {
 // ─── Mode Cycling ────────────────────────────────────────────────
 
 func TestCycleModeForward(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	// First setting (Firefox) starts at "default"
 	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	if m.activeCol != colMode {
 		t.Fatalf("expected colMode, got %d", m.activeCol)
 	}
 
-	// Cycle forward: default -> fullscreen
-	m = sendKey(t, m, " ")
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Mode != "fullscreen" {
-		t.Errorf("expected mode fullscreen, got %s", m.settings[idx].Mode)
-	}
 
 	// Cycle forward: fullscreen -> desktop
 	m = sendKey(t, m, " ")
@@ -408,52 +397,23 @@ func TestCycleModeForward(t *testing.T) {
 }
 
 func TestCycleModeForward_WithEnterKey(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "enter")
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Mode != "fullscreen" {
-		t.Errorf("expected mode fullscreen after enter, got %s", m.settings[idx].Mode)
-	}
-}
-
-func TestCycleModeForward_WithRightKey(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
-
-	m = sendKey(t, m, "right")
-	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Mode != "fullscreen" {
-		t.Errorf("expected mode fullscreen after right, got %s", m.settings[idx].Mode)
-	}
-}
-
-func TestCycleModeBackward_WithLeftKey(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colKey
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
-
-	// default -> left -> desktop (wrap backward)
-	m = sendKey(t, m, "left")
-	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Mode != "desktop" {
-		t.Errorf("expected mode desktop after left (wrap), got %s", m.settings[idx].Mode)
+		t.Errorf("expected mode desktop after enter, got %s", m.settings[idx].Mode)
 	}
 }
 
 // ─── Enable Toggling ─────────────────────────────────────────────
 
 func TestToggleEnabled(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	// Firefox starts enabled=true
 	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
@@ -476,9 +436,8 @@ func TestToggleEnabled(t *testing.T) {
 }
 
 func TestToggleEnabled_WithEnterKey(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
@@ -492,9 +451,8 @@ func TestToggleEnabled_WithEnterKey(t *testing.T) {
 // ─── Hotkey Recording ────────────────────────────────────────────
 
 func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row,
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colHotkey
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row,
 
 	if m.activeCol != colKey {
 		t.Fatalf("expected colHotkey, got %d", m.activeCol)
@@ -507,28 +465,26 @@ func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
 }
 
 func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
-	m = sendKey(t, m, " ")               // start recording
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row
 
+	m = sendKey(t, m, " ") // start recording
 	if !m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=true after space")
 	}
 }
 
 func TestHotkeyRecording_RecordsKey(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
-	m = sendKey(t, m, " ")               // start recording
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row
+	m = sendKey(t, m, " ")     // start recording
 
 	// Press 'a' to record
 	m = sendKey(t, m, "a")
 
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Key != "a" {
-		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].Key)
+	if m.settings[idx].HotKey != "a" {
+		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after recording")
@@ -536,12 +492,11 @@ func TestHotkeyRecording_RecordsKey(t *testing.T) {
 }
 
 func TestHotkeyRecording_EscCancels(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
-	m = sendKey(t, m, " ")               // start recording
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row
+	m = sendKey(t, m, " ")     // start recording
 
-	originalHotkey := m.settings[m.searchedIndices[m.cursor]].Key
+	originalHotkey := m.settings[m.searchedIndices[m.cursor]].HotKey
 
 	m = sendKey(t, m, CANCEL_KEY) // cancel
 
@@ -549,22 +504,21 @@ func TestHotkeyRecording_EscCancels(t *testing.T) {
 		t.Errorf("expected recordingHotkey=false after esc")
 	}
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Key != originalHotkey {
-		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].Key)
+	if m.settings[idx].HotKey != originalHotkey {
+		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].HotKey)
 	}
 }
 
 func TestHotkeyRecording_BackspaceClears(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	// Firefox has hotkey "ctrl+1"
-	m = sendKey(t, m, "enter")           // focus row
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
-	m = sendKey(t, m, " ")               // start recording
-	m = sendKey(t, m, "backspace")       // clear hotkey
+	m = sendKey(t, m, "enter")     // focus row
+	m = sendKey(t, m, " ")         // start recording
+	m = sendKey(t, m, "backspace") // clear hotkey
 
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Key != "" {
-		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].Key)
+	if m.settings[idx].HotKey != "" {
+		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after backspace clear")
@@ -574,7 +528,7 @@ func TestHotkeyRecording_BackspaceClears(t *testing.T) {
 // ─── Navigation While Focused ────────────────────────────────────
 
 func TestRowFocus_NavigateWithArrowKeys(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row 0
 
 	m = sendKey(t, m, "down") // move to row 1
@@ -592,7 +546,7 @@ func TestRowFocus_NavigateWithArrowKeys(t *testing.T) {
 }
 
 func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus
 	// Move to mode column so j/k don't interfere with hotkey recording
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
@@ -611,7 +565,7 @@ func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
 // ─── Filter Integration ──────────────────────────────────────────
 
 func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.cursor = 4 // last item
 
 	// Enter filter mode and type a restrictive filter
@@ -630,7 +584,7 @@ func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
 }
 
 func TestFilter_NavigateDuringFilter(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/") // enter filter mode
 
 	m = sendKey(t, m, "down")
@@ -647,7 +601,7 @@ func TestFilter_NavigateDuringFilter(t *testing.T) {
 // ─── View Rendering ──────────────────────────────────────────────
 
 func TestView_ContainsLogo(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -658,7 +612,7 @@ func TestView_ContainsLogo(t *testing.T) {
 }
 
 func TestView_ContainsVersion(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -669,12 +623,12 @@ func TestView_ContainsVersion(t *testing.T) {
 }
 
 func TestView_ContainsColumnHeaders(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
 
-	for _, header := range []string{"Application", "Modifier", "Key", "Mode", "Enabled"} {
+	for _, header := range []string{"Application", "HotKey", "Mode", "Enabled"} {
 		if !containsAny(view, header) {
 			t.Errorf("expected view to contain header %q", header)
 		}
@@ -682,7 +636,7 @@ func TestView_ContainsColumnHeaders(t *testing.T) {
 }
 
 func TestView_ContainsSettingNames(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -695,7 +649,7 @@ func TestView_ContainsSettingNames(t *testing.T) {
 }
 
 func TestView_EmptyListMessage(t *testing.T) {
-	m := NewModel([]ModelSetting{}, "0.1.0")
+	m := NewModel(nil, []core.Setting{}, "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -706,7 +660,7 @@ func TestView_EmptyListMessage(t *testing.T) {
 }
 
 func TestView_ShowsBrowseHelp(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -717,7 +671,7 @@ func TestView_ShowsBrowseHelp(t *testing.T) {
 }
 
 func TestView_ShowsFilterHelp(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/")
 	m.width = 120
 	m.height = 40
@@ -729,7 +683,7 @@ func TestView_ShowsFilterHelp(t *testing.T) {
 }
 
 func TestView_ShowsRowFocusHelp(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter")
 	m.width = 120
 	m.height = 40
@@ -741,10 +695,9 @@ func TestView_ShowsRowFocusHelp(t *testing.T) {
 }
 
 func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
-	m = sendKey(t, m, "enter")           // focus row at colMod
-	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colKey
-	m = sendKey(t, m, " ")               // start recording
+	m := NewModel(nil, testSettings(), "0.1.0")
+	m = sendKey(t, m, "enter") // focus row at colKey
+	m = sendKey(t, m, " ")     // start recording
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -757,7 +710,7 @@ func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
 // ─── Exit Behavior ───────────────────────────────────────────────
 
 func TestBrowse_CtrlCExits(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
 
 	if cmd == nil {
@@ -771,7 +724,7 @@ func TestBrowse_CtrlCExits(t *testing.T) {
 }
 
 func TestFilter_CtrlCExits(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "/") // enter filter mode
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
@@ -786,7 +739,7 @@ func TestFilter_CtrlCExits(t *testing.T) {
 }
 
 func TestRowFocus_CtrlCExits(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
@@ -803,7 +756,7 @@ func TestRowFocus_CtrlCExits(t *testing.T) {
 // ─── Window Size ─────────────────────────────────────────────────
 
 func TestWindowSize_UpdatesDimensions(t *testing.T) {
-	m := NewModel(testSettings(), "0.1.0")
+	m := NewModel(nil, testSettings(), "0.1.0")
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	m = result.(model)
 
