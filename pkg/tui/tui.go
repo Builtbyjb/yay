@@ -12,8 +12,9 @@ import (
 )
 
 type model struct {
+	db              *core.Database
 	state           focusState
-	settings        []ModelSetting
+	settings        []core.Setting
 	searchedIndices []int
 	searchInput     textinput.Model
 	cursor          int // position within SearchedIndices
@@ -26,13 +27,14 @@ type model struct {
 	recordingHotkey bool // true when waiting for the next key press for hotkey
 }
 
-func NewModel(settings []ModelSetting, version string) model {
+func NewModel(db *core.Database, settings []core.Setting, version string) model {
 	ti := textinput.New()
 	ti.Placeholder = "Type to Search..."
 	ti.CharLimit = 64
 	ti.Width = 40
 
 	m := model{
+		db:          db,
 		state:       stateBrowse,
 		settings:    settings,
 		searchInput: ti,
@@ -87,9 +89,8 @@ func (m model) View() string {
 }
 
 // Starts the TUI
-func Run(settings []core.Setting, version string) error {
-	modelSettings := mapToModelSetting(settings)
-	m := NewModel(modelSettings, version)
+func Run(db *core.Database, settings []core.Setting, version string) error {
+	m := NewModel(db, settings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	go func() {

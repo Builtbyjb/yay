@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Builtbyjb/yay/pkg/lib"
-	"github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
@@ -133,7 +131,6 @@ func (m model) TableView() string {
 func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case EXIT_KEY, CANCEL_KEY:
-		m.saveChanges()
 		return m, tea.Quit
 
 	case "up", "k":
@@ -179,14 +176,12 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case EXIT_KEY:
-		m.saveChanges()
 		return m, tea.Quit
 
 	case CANCEL_KEY:
 		m.state = stateBrowse
 		m.activeCol = colNone
 		m.recordingHotkey = false
-		m.saveChanges()
 		return m, nil
 
 	case SWITCH_COLUMN_KEY:
@@ -207,9 +202,12 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case colKey:
 		if msg.String() == "enter" || msg.String() == " " {
 			m.recordingHotkey = true
-			return m, nil
+		} else if msg.String() == "delete" {
+			// TODO
+			// Set the modelSetting to an empty string
+			// Update the database
 		}
-
+		return m, nil
 	case colMode:
 		switch msg.String() {
 		case "enter", " ":
@@ -318,27 +316,4 @@ func (m *model) updateChanges(idx int) {
 	if !slices.Contains(m.changes, idx) {
 		m.changes = append(m.changes, idx)
 	}
-}
-
-func (m *model) saveChanges() {
-	if len(m.changes) == 0 {
-		return
-	}
-
-	updates := []core.Update{}
-
-	for _, c := range m.changes {
-		modelSetting := m.settings[c]
-		mod := core.ModifierFromDisplay(modelSetting.Mod)
-		hotKey := mod + "+" + modelSetting.HotKey
-		updates = append(updates, core.Update{
-			Id:      modelSetting.Id,
-			Hotkey:  hotKey,
-			Mode:    modelSetting.Mode,
-			Enabled: modelSetting.Enabled,
-		})
-	}
-
-	lib.Update(updates)
-	m.changes = []int{}
 }

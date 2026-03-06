@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Short: "A light weight application manager",
 	// Long:  "A longer description that spans multiple lines and likely contains",
 	Run: func(cmd *cobra.Command, args []string) {
-		settings, err := lib.Fetch()
+		db, settings, err := lib.Fetch()
 		if err != nil {
 			fmt.Println("Error occurred while fetching applications:", err)
 			os.Exit(1)
@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		if err := tui.Run(settings, VERSION); err != nil {
+		if err := tui.Run(db, settings, VERSION); err != nil {
 			fmt.Println("Error running TUI:", err)
 			os.Exit(1)
 		}
