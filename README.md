@@ -18,7 +18,7 @@ yay stop
 ```
 
 ```sh
-# Display latest version
+# Display current version
 yay version
 ```
 
