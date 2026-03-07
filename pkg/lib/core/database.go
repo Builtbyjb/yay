@@ -49,6 +49,12 @@ func (d *Database) Close() error {
 	return d.conn.Close()
 }
 
+func (d *Database) Insert(name string, path string, iconPath string, hotkey sql.NullString, mode string, enabled bool) error {
+	query := "INSERT INTO settings (name, path, icon_path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)"
+	_, err := d.conn.Exec(query, name, path, iconPath, hotkey, mode, enabled)
+	return err
+}
+
 func (d *Database) UpdateEnabled(id int, enabled bool) error {
 	query := "UPDATE settings SET enabled = ? WHERE id = ? "
 	_, err := d.conn.Exec(query, enabled, id)
@@ -112,7 +118,7 @@ func (d *Database) Refresh(apps []App) ([]Setting, error) {
 	}
 
 	// Return the updated settings list
-	settings, err := d.getUpdatedSettings()
+	settings, err := d.GetAllSettings()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +148,7 @@ func (d *Database) getExistingPaths() (map[string]struct{}, error) {
 	return existingPaths, nil
 }
 
-func (d *Database) getUpdatedSettings() ([]Setting, error) {
+func (d *Database) GetAllSettings() ([]Setting, error) {
 	updatedRows, err := d.conn.Query("SELECT * FROM settings ORDER BY name ASC")
 	if err != nil {
 		return nil, err

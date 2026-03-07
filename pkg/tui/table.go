@@ -273,9 +273,7 @@ func (m *model) cycleMode() {
 	currentIdx := indexOf(AvailableModes, prev)
 	nextIdx := (currentIdx + 1) % len(AvailableModes)
 	m.settings[idx].Mode = AvailableModes[nextIdx]
-	err := m.db.UpdateMode(m.settings[idx].Id, m.settings[idx].Mode)
-
-	if err != nil {
+	if err := m.db.UpdateMode(m.settings[idx].Id, m.settings[idx].Mode); err != nil {
 		m.errors = append(m.errors, err.Error())
 	}
 }
@@ -287,11 +285,9 @@ func (m *model) toggleEnabled() {
 	idx := m.searchedIndices[m.cursor]
 	prev := m.settings[idx].Enabled
 	m.settings[idx].Enabled = !prev
-	// err := m.db.UpdateEnabled(m.settings[idx].Id, m.settings[idx].Enabled)
-
-	// if err != nil {
-	// 	m.errors = append(m.errors, err.Error())
-	// }
+	if err := m.db.UpdateEnabled(m.settings[idx].Id, m.settings[idx].Enabled); err != nil {
+		m.errors = append(m.errors, err.Error())
+	}
 }
 
 func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -335,7 +331,7 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // TODO: May no longer be needed
 func (m *model) updateChanges(idx int) {
-	if !slices.Contains(m.changes, idx) {
-		m.changes = append(m.changes, idx)
+	if !slices.Contains(m.keys, idx) {
+		m.keys = append(m.keys, idx)
 	}
 }

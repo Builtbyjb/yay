@@ -390,7 +390,7 @@ func TestGetUpdatedSettingsEmpty(t *testing.T) {
 	db := setupTestDatabase(t)
 	defer db.Close()
 
-	settings, err := db.getUpdatedSettings()
+	settings, err := db.GetAllSettings()
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -411,7 +411,7 @@ func TestGetUpdatedSettingsReturnsAll(t *testing.T) {
 	}
 	seedApps(t, db, apps)
 
-	settings, err := db.getUpdatedSettings()
+	settings, err := db.GetAllSettings()
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
