@@ -52,7 +52,14 @@ var startCmd = &cobra.Command{
 	Short: "Start background daemon",
 	// Long:  `Start the application with the specified settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		lib.Listener()
+		db, err := lib.GetDatabase()
+		if err != nil {
+			fmt.Println("Error occurred while fetching database:", err)
+			os.Exit(1)
+		}
+		defer db.Close()
+
+		lib.Listener(db)
 	},
 }
 

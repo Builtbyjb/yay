@@ -67,7 +67,19 @@ func (d *Database) UpdateMode(id int, mode string) error {
 	return err
 }
 
-// TODO: findHotkey
+func (d *Database) FindByHotkey(hotkey string) (*Setting, error) {
+	query := "SELECT * FROM settings WHERE hotkey = ?"
+	row := d.conn.QueryRow(query, hotkey)
+
+	var s Setting
+	if err := row.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &s, nil
+}
 
 func (d *Database) UpdateHotkey(id int, hotkey sql.NullString) error {
 	query := "UPDATE settings SET hotkey = ? WHERE id = ? "

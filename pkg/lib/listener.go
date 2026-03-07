@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 
+	"github.com/Builtbyjb/yay/pkg/lib/core"
 	hook "github.com/robotn/gohook"
 )
 
@@ -10,45 +11,72 @@ type CustomKeyMsg struct {
 	Event hook.Event
 }
 
-/*
-Features:
--> If a key is mapped to an app pressing the same key toggles between opened windows of the app
--> Pressing command+shift on macOS activates the dock apps and opens them in order
-->  You can assign hotkeys to applications and set mode
-*/
-
-func Listener() {
+// TODO: Currently macos specific
+func Listener(db *core.Database) {
 	eventChan := hook.Start()
 	defer hook.End()
 
 	fmt.Println("Listening for global keyboard events... (Ctrl+C to quit)")
 
+	// TODO: use a queue linked list
+	var keys []uint16
+	var mod string
+
 	for event := range eventChan {
-		if event.Kind == hook.KeyDown && event.Rawcode != 0 {
-			fmt.Printf("Rawcode: %d \n", event.Rawcode)
+		keys = append(keys, uint16(event.Rawcode))
+
+		// fmt.Printf("Current keys: %v\n", keys)
+		// fmt.Printf("Rawcode: %d \n", event.Rawcode)
+
+		// Tmp queue implementation to process keys in order
+		key := keys[0]
+		keys = keys[1:]
+
+		if event.Kind == hook.KeyDown {
+
+			k, err := RawcodeToString(key)
+			if err != nil {
+				fmt.Println("Error:", err)
+				continue
+			}
+
+			if mod != "" {
+				if mod == "l-command" || mod == "r-command" {
+					if k == "l-shift" || k == "r-shift" {
+						mod = "command+shift"
+						continue
+					}
+				}
+
+				if mod == "command+shift" {
+					hotkey := fmt.Sprintf("%s+%s", mod, k)
+					fmt.Println("Opening a dock app", hotkey)
+					continue
+				}
+
+				hotkey := fmt.Sprintf("%s+%s", mod, k)
+				// If hotkey
+				setting, err := db.FindByHotkey(hotkey)
+				if err != nil {
+					fmt.Println("Error fetching setting:", err)
+					continue
+				}
+
+				if setting == nil {
+					fmt.Printf("No application found for hotkey: %s\n", hotkey)
+					continue
+				}
+
+				fmt.Println("Application:", setting.Name)
+			}
+
+			if VerifiedModifier(k) {
+				mod = k
+				continue
+			}
+		} else if event.Kind == hook.KeyUp {
+			mod = ""
+			continue
 		}
 	}
-
-	/*
-		var mod string
-		var alt string
-		var key string
-
-		for e in keyEvent:
-			ks := RawcodeToKeyString(e.rawcode)
-			if AcceptedModifier(Ks):
-				mod = ks
-				continue
-			if mod != "":
-				if AcceptedAlt(ks):
-					alt = ks
-					continue
-				if alt != "":
-					hotkey = fmt.Sprintf("%s+%s+%s", mod, alt, ks)
-					DoSomething(hotkey)
-				else:
-					hotkey = fmt.Sprintf("%s+%s", mod, ks)
-					DoSomethingElse(hotkey)
-
-	*/
 }
