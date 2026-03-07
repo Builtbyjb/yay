@@ -205,7 +205,7 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			m.recordingHotkey = true
 			return m, nil
-		case "delete":
+		case "delete", "backspace":
 			if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 				return m, nil
 			}
