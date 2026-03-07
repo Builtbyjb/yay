@@ -22,8 +22,8 @@ type model struct {
 	version         string
 	width           int
 	height          int
-	keys            []int // Stores indices of settings that have been changed but not yet saved
-	recordingHotkey bool  // true when waiting for the next key press for hotkey
+	keys            []uint16
+	recordingHotkey bool // true when waiting for the next key press for hotkey
 	errors          []string
 	debug           []int
 }
@@ -42,7 +42,7 @@ func NewModel(db *core.Database, settings []core.Setting, version string) model 
 		cursor:      0,
 		activeCol:   colNone,
 		version:     version,
-		keys:        []int{},
+		keys:        []uint16{},
 		errors:      []string{},
 		debug:       []int{},
 	}
@@ -72,22 +72,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case lib.CustomKeyMsg:
-		if m.recordingHotkey && msg.Event.Kind == hook.KeyDown {
-			if len(m.keys) > 3 {
-				/*
-					var hotkey string
-					mod := RawcodeToString(m.keys[1])
-					key := RawcodeToString(m.keys[2])
-					if AcceptedModifier(mod):
-						hotkey = fmt.Sprintf("%s+%s", mod, key)
-						m.settings[idx].hotkey = sql.NullSString{String: hotkey, Valid: true}
-						m.db.UpdateHotkey(settingId, hotkey)
-						m.recordingHotkey = false
-
-				*/
-			}
-			m.debug = append(m.debug, int(msg.Event.Rawcode))
-		}
+		return m.RecordKey(msg)
 	}
 	return m, nil
 }

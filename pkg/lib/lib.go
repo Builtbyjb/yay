@@ -41,3 +41,33 @@ func Fetch() (*core.Database, []core.Setting, error) {
 		return nil, nil, nil
 	}
 }
+
+func RawcodeToString(rawcode uint16) (string, error) {
+	switch runtime.GOOS {
+	case "darwin":
+		key, ok := macos.RawToKeyDarwin[rawcode]
+		if !ok {
+			return "", fmt.Errorf("unknown rawcode: %d", rawcode)
+		}
+		return key, nil
+	case "windows":
+		return "", fmt.Errorf("windows not supported yet")
+	case "linux":
+		return "", fmt.Errorf("linux not supported yet")
+	default:
+		return "", fmt.Errorf("unsupported operating system")
+	}
+}
+
+func VerifiedModifier(mod string) bool {
+	switch runtime.GOOS {
+	case "darwin":
+		return true
+	case "windows":
+		return false
+	case "linux":
+		return false
+	default:
+		return false
+	}
+}

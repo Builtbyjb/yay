@@ -3,7 +3,6 @@ package tui
 import (
 	"database/sql"
 	"fmt"
-	"slices"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -293,45 +292,14 @@ func (m *model) toggleEnabled() {
 func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	// Esc cancels recording
-	if key == "esc" {
+	if key == CANCEL_KEY {
 		m.recordingHotkey = false
 		return m, nil
 	}
 
-	// Backspace clears the hotkey
-	if key == "backspace" {
-		if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
-			idx := m.searchedIndices[m.cursor]
-			old := m.settings[idx].HotKey
-			m.settings[idx].HotKey = sql.NullString{String: "", Valid: false}
-			m.recordingHotkey = false
-			// TODO: refactor
-			if old != (sql.NullString{}) {
-				m.updateChanges(idx)
-			}
-		}
-		return m, nil
+	if key == EXIT_KEY {
+		return m, tea.Quit
 	}
 
-	// Build the hotkey string from the tea.KeyMsg
-	hotkey := msg.String()
-	if hotkey == "" {
-		return m, nil
-	}
-
-	if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
-		idx := m.searchedIndices[m.cursor]
-		m.settings[idx].HotKey = sql.NullString{String: hotkey, Valid: true}
-		m.recordingHotkey = false
-		m.updateChanges(idx)
-	}
 	return m, nil
-}
-
-// TODO: May no longer be needed
-func (m *model) updateChanges(idx int) {
-	if !slices.Contains(m.keys, idx) {
-		m.keys = append(m.keys, idx)
-	}
 }
