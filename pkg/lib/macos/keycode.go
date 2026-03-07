@@ -67,11 +67,12 @@ var RawToKeyDarwin = map[uint16]string{
 	54:  "r-command", // right command
 	55:  "l-command", // left command
 	56:  "l-shift",
-	57:  "caps lock",
+	57:  "capslock",
 	58:  "l-option",
 	59:  "control",
 	60:  "r-shift",
 	61:  "r-option",
+	62:  "capslock",
 	65:  "decimal point",
 	67:  "multiply",
 	69:  "add",

@@ -3,26 +3,49 @@ package lib
 import (
 	"fmt"
 	"runtime"
+	"slices"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
 	"github.com/Builtbyjb/yay/pkg/lib/macos"
 )
 
-func Fetch() (*core.Database, []core.Setting, error) {
+func GetDatabase() (*core.Database, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
 		dbPath, err := macos.GetDatabasePath()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		db, err := core.NewDatabase(dbPath)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if err := db.Init(); err != nil {
+			return nil, err
+		}
+
+		return db, nil
+	case "windows":
+		fmt.Println("Coming Soon...")
+		return nil, nil
+	case "linux":
+		fmt.Println("Coming Soon...")
+		return nil, nil
+	default:
+		fmt.Println("Unsupported operating system.")
+		return nil, nil
+	}
+}
+
+func Fetch() (*core.Database, []core.Setting, error) {
+
+	switch runtime.GOOS {
+	case "darwin":
+		db, err := GetDatabase()
+		if err != nil {
 			return nil, nil, err
 		}
 
@@ -62,7 +85,10 @@ func RawcodeToString(rawcode uint16) (string, error) {
 func VerifiedModifier(mod string) bool {
 	switch runtime.GOOS {
 	case "darwin":
-		return true
+		if slices.Contains(macos.ModifiersMacos, mod) {
+			return true
+		}
+		return false
 	case "windows":
 		return false
 	case "linux":
