@@ -55,7 +55,7 @@ func Listener(db *core.Database) {
 				}
 
 				hotkey := fmt.Sprintf("%s+%s", mod, k)
-				// If hotkey
+
 				setting, err := db.FindByHotkey(hotkey)
 				if err != nil {
 					fmt.Println("Error fetching setting:", err)
@@ -63,7 +63,6 @@ func Listener(db *core.Database) {
 				}
 
 				if setting == nil {
-					fmt.Printf("No application found for hotkey: %s\n", hotkey)
 					continue
 				}
 
@@ -75,8 +74,16 @@ func Listener(db *core.Database) {
 				continue
 			}
 		} else if event.Kind == hook.KeyUp {
-			mod = ""
-			continue
+			k, err := RawcodeToString(key)
+			if err != nil {
+				fmt.Println("Error:", err)
+				continue
+			}
+
+			if VerifiedModifier(k) {
+				mod = ""
+				continue
+			}
 		}
 	}
 }

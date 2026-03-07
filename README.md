@@ -1,5 +1,8 @@
 ![YAY](./assets/yay.png)
 
+> [!NOTE]
+>  Only supports MacOS (Apple Silicon) for now, other platforms and operating systems planned for the future.
+
 ## Arguments
 
 ```sh
