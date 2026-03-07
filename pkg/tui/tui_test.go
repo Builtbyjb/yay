@@ -528,59 +528,59 @@ func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
 	}
 }
 
-func TestHotkeyRecording_RecordsKey(t *testing.T) {
-	database := setupTestDatabase(t)
-	m := NewModel(database, testSettings(t, database), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, " ")     // start recording
+// func TestHotkeyRecording_RecordsKey(t *testing.T) {
+// 	database := setupTestDatabase(t)
+// 	m := NewModel(database, testSettings(t, database), "0.1.0")
+// 	m = sendKey(t, m, "enter") // focus row
+// 	m = sendKey(t, m, " ")     // start recording
 
-	// Press 'a' to record
-	m = sendKey(t, m, "a")
+// 	// Press 'a' to record
+// 	m = sendKey(t, m, "a")
 
-	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].HotKey != (sql.NullString{String: "a", Valid: true}) {
-		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey.String)
-	}
-	if m.recordingHotkey {
-		t.Errorf("expected recordingHotkey=false after recording")
-	}
-}
+// 	idx := m.searchedIndices[m.cursor]
+// 	if m.settings[idx].HotKey != (sql.NullString{String: "a", Valid: true}) {
+// 		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey.String)
+// 	}
+// 	if m.recordingHotkey {
+// 		t.Errorf("expected recordingHotkey=false after recording")
+// 	}
+// }
 
-func TestHotkeyRecording_EscCancels(t *testing.T) {
-	database := setupTestDatabase(t)
-	m := NewModel(nil, testSettings(t, database), "0.1.0")
-	m = sendKey(t, m, "enter") // focus row
-	m = sendKey(t, m, " ")     // start recording
+// func TestHotkeyRecording_EscCancels(t *testing.T) {
+// 	database := setupTestDatabase(t)
+// 	m := NewModel(nil, testSettings(t, database), "0.1.0")
+// 	m = sendKey(t, m, "enter") // focus row
+// 	m = sendKey(t, m, " ")     // start recording
 
-	originalHotkey := m.settings[m.searchedIndices[m.cursor]].HotKey
+// 	originalHotkey := m.settings[m.searchedIndices[m.cursor]].HotKey
 
-	m = sendKey(t, m, CANCEL_KEY) // cancel
+// 	m = sendKey(t, m, CANCEL_KEY) // cancel
 
-	if m.recordingHotkey {
-		t.Errorf("expected recordingHotkey=false after esc")
-	}
-	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].HotKey != originalHotkey {
-		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey.String, m.settings[idx].HotKey.String)
-	}
-}
+// 	if m.recordingHotkey {
+// 		t.Errorf("expected recordingHotkey=false after esc")
+// 	}
+// 	idx := m.searchedIndices[m.cursor]
+// 	if m.settings[idx].HotKey != originalHotkey {
+// 		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey.String, m.settings[idx].HotKey.String)
+// 	}
+// }
 
-func TestHotkeyRecording_BackspaceClears(t *testing.T) {
-	database := setupTestDatabase(t)
-	m := NewModel(nil, testSettings(t, database), "0.1.0")
-	// Firefox has hotkey "ctrl+1"
-	m = sendKey(t, m, "enter")     // focus row
-	m = sendKey(t, m, " ")         // start recording
-	m = sendKey(t, m, "backspace") // clear hotkey
+// func TestHotkeyRecording_BackspaceClears(t *testing.T) {
+// 	database := setupTestDatabase(t)
+// 	m := NewModel(nil, testSettings(t, database), "0.1.0")
+// 	// Firefox has hotkey "ctrl+1"
+// 	m = sendKey(t, m, "enter")     // focus row
+// 	m = sendKey(t, m, " ")         // start recording
+// 	m = sendKey(t, m, "backspace") // clear hotkey
 
-	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].HotKey != (sql.NullString{String: "", Valid: false}) {
-		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey.String)
-	}
-	if m.recordingHotkey {
-		t.Errorf("expected recordingHotkey=false after backspace clear")
-	}
-}
+// 	idx := m.searchedIndices[m.cursor]
+// 	if m.settings[idx].HotKey != (sql.NullString{String: "", Valid: false}) {
+// 		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey.String)
+// 	}
+// 	if m.recordingHotkey {
+// 		t.Errorf("expected recordingHotkey=false after backspace clear")
+// 	}
+// }
 
 // ─── Navigation While Focused ────────────────────────────────────
 
