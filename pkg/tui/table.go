@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"database/sql"
 	"fmt"
 	"slices"
 
@@ -94,7 +95,7 @@ func (m model) TableView() string {
 			name := truncate(s.Name, colWidthName-3) // -3 for safety + prefix
 			name = prefix + name
 
-			hotkey := displayKey(s.HotKey)
+			hotkey := displayKey(s.HotKey.String)
 
 			// Special case: recording hotkey
 			if isFocused && m.activeCol == colKey && m.recordingHotkey {
@@ -200,22 +201,25 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Column-specific actions
 	switch m.activeCol {
 	case colKey:
-		if msg.String() == "enter" || msg.String() == " " {
+		switch msg.String() {
+		case "enter", " ":
 			m.recordingHotkey = true
-		} else if msg.String() == "delete" {
+			return m, nil
+		case "delete", "backspace":
 			if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 				return m, nil
 			}
 			idx := m.searchedIndices[m.cursor]
 			settingId := m.settings[idx].Id
 			err := m.db.ClearHotkey(settingId)
-			m.settings[idx].HotKey = ""
+			m.settings[idx].HotKey = sql.NullString{String: "", Valid: false}
 
 			if err != nil {
 				m.errors = append(m.errors, err.Error())
 			}
+			return m, nil
 		}
-		return m, nil
+
 	case colMode:
 		switch msg.String() {
 		case "enter", " ":
@@ -224,38 +228,14 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case colEnabled:
-		if msg.String() == "enter" || msg.String() == " " {
+		switch msg.String() {
+		case "enter", " ":
 			m.toggleEnabled()
 			return m, nil
 		}
 	}
 
 	return m, nil
-}
-
-func (m *model) cycleMode() {
-	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
-		return
-	}
-	idx := m.searchedIndices[m.cursor]
-	old := m.settings[idx].Mode
-	current := indexOf(AvailableModes, old)
-	next := (current + 1) % len(AvailableModes)
-
-	m.settings[idx].Mode = AvailableModes[next]
-	m.updateChanges(idx)
-}
-
-func (m *model) cycleColumn() {
-	switch m.activeCol {
-	case colNone, colEnabled:
-		m.activeCol = colKey
-	case colKey:
-		m.activeCol = colMode
-	case colMode:
-		m.activeCol = colEnabled
-	}
-	m.recordingHotkey = false
 }
 
 func (m *model) moveCursor(delta int) {
@@ -272,14 +252,42 @@ func (m *model) moveCursor(delta int) {
 	}
 }
 
+func (m *model) cycleColumn() {
+	switch m.activeCol {
+	case colNone, colEnabled:
+		m.activeCol = colKey
+	case colKey:
+		m.activeCol = colMode
+	case colMode:
+		m.activeCol = colEnabled
+	}
+	m.recordingHotkey = false
+}
+
+func (m *model) cycleMode() {
+	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
+		return
+	}
+	idx := m.searchedIndices[m.cursor]
+	prev := m.settings[idx].Mode
+	currentIdx := indexOf(AvailableModes, prev)
+	nextIdx := (currentIdx + 1) % len(AvailableModes)
+	m.settings[idx].Mode = AvailableModes[nextIdx]
+	if err := m.db.UpdateMode(m.settings[idx].Id, m.settings[idx].Mode); err != nil {
+		m.errors = append(m.errors, err.Error())
+	}
+}
+
 func (m *model) toggleEnabled() {
 	if len(m.searchedIndices) == 0 || m.cursor >= len(m.searchedIndices) {
 		return
 	}
 	idx := m.searchedIndices[m.cursor]
-	old := m.settings[idx].Enabled
-	m.settings[idx].Enabled = !old
-	m.updateChanges(idx)
+	prev := m.settings[idx].Enabled
+	m.settings[idx].Enabled = !prev
+	if err := m.db.UpdateEnabled(m.settings[idx].Id, m.settings[idx].Enabled); err != nil {
+		m.errors = append(m.errors, err.Error())
+	}
 }
 
 func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -296,9 +304,10 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
 			idx := m.searchedIndices[m.cursor]
 			old := m.settings[idx].HotKey
-			m.settings[idx].HotKey = ""
+			m.settings[idx].HotKey = sql.NullString{String: "", Valid: false}
 			m.recordingHotkey = false
-			if old != "" {
+			// TODO: refactor
+			if old != (sql.NullString{}) {
 				m.updateChanges(idx)
 			}
 		}
@@ -313,7 +322,7 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
 		idx := m.searchedIndices[m.cursor]
-		m.settings[idx].HotKey = hotkey
+		m.settings[idx].HotKey = sql.NullString{String: hotkey, Valid: true}
 		m.recordingHotkey = false
 		m.updateChanges(idx)
 	}
@@ -322,7 +331,7 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // TODO: May no longer be needed
 func (m *model) updateChanges(idx int) {
-	if !slices.Contains(m.changes, idx) {
-		m.changes = append(m.changes, idx)
+	if !slices.Contains(m.keys, idx) {
+		m.keys = append(m.keys, idx)
 	}
 }

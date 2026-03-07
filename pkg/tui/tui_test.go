@@ -1,21 +1,48 @@
 package tui
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// testSettings returns a reusable slice of settings for tests.
-func testSettings() []core.Setting {
-	return []core.Setting{
-		{Id: 1, Name: "Firefox", HotKey: "ctrl+1", Mode: "default", Enabled: true},
-		{Id: 2, Name: "Terminal", HotKey: "", Mode: "fullscreen", Enabled: true},
-		{Id: 3, Name: "Finder", HotKey: "ctrl+3", Mode: "desktop", Enabled: false},
-		{Id: 4, Name: "Safari", HotKey: "", Mode: "default", Enabled: true},
-		{Id: 5, Name: "Notes", HotKey: "alt+n", Mode: "default", Enabled: true},
+// TODO
+func setupTestDatabase(t *testing.T) *core.Database {
+	t.Helper()
+	database, err := core.NewDatabase(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to create database: %v", err)
 	}
+
+	if err := database.Init(); err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	return database
+}
+
+// testSettings returns a reusable slice of settings for tests.
+func testSettings(t *testing.T, db *core.Database) []core.Setting {
+	var err error
+	err = db.Insert("Firefox", "/path/to/firefox", "/icon/firefox.icns", sql.NullString{String: "ctrl+1", Valid: true}, "default", true)
+	err = db.Insert("Terminal", "/path/to/terminal", "/icon/terminal.icns", sql.NullString{String: "", Valid: false}, "desktop", true)
+	err = db.Insert("Finder", "/path/to/finder", "/icon/finder.icns", sql.NullString{String: "ctrl+3", Valid: true}, "desktop", false)
+	err = db.Insert("Safari", "/path/to/safari", "/icon/safari.icns", sql.NullString{String: "", Valid: false}, "default", true)
+	err = db.Insert("Notes", "/path/to/notes", "/icon/notes.icns", sql.NullString{String: "alt+n", Valid: true}, "default", true)
+
+	if err != nil {
+		t.Fatalf("Failed to insert test settings: %v", err)
+	}
+
+	settings, getErr := db.GetAllSettings()
+
+	if getErr != nil {
+		t.Fatalf("Failed to get test settings: %v", getErr)
+	}
+
+	return settings
 }
 
 func keyMsg(key string) tea.KeyMsg {
@@ -61,7 +88,8 @@ func sendKey(t *testing.T, m model, key string) model {
 }
 
 func TestNewModel_DefaultState(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 
 	if m.state != stateBrowse {
 		t.Errorf("expected initial state stateBrowse (%d), got %d", stateBrowse, m.state)
@@ -78,7 +106,8 @@ func TestNewModel_DefaultState(t *testing.T) {
 }
 
 func TestNewModel_AllSettingsVisible(t *testing.T) {
-	settings := testSettings()
+	database := setupTestDatabase(t)
+	settings := testSettings(t, database)
 	m := NewModel(nil, settings, "0.1.0")
 
 	if len(m.searchedIndices) != len(settings) {
@@ -98,22 +127,24 @@ func TestNewModel_EmptySettings(t *testing.T) {
 }
 
 func TestNewModel_PreservesSettingData(t *testing.T) {
-	settings := testSettings()
+	database := setupTestDatabase(t)
+	settings := testSettings(t, database)
 	m := NewModel(nil, settings, "0.1.0")
 
-	if m.settings[0].Name != "Firefox" {
-		t.Errorf("expected first setting name Firefox, got %s", m.settings[0].Name)
+	if m.settings[0].Name != "Finder" {
+		t.Errorf("expected first setting name Finder, got %s", m.settings[0].Name)
 	}
-	if m.settings[2].Enabled != false {
-		t.Errorf("expected Finder to be disabled")
+	if m.settings[2].Enabled != true {
+		t.Errorf("expected Finder to be enabled")
 	}
-	if m.settings[1].Mode != "fullscreen" {
-		t.Errorf("expected Terminal mode fullscreen, got %s", m.settings[1].Mode)
+	if m.settings[1].Mode != "default" {
+		t.Errorf("expected Terminal mode default, got %s", m.settings[1].Mode)
 	}
 }
 
 func TestUpdateFilter_MatchesSubstring(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.searchInput.SetValue("fire")
 	m.updateFilter()
 
@@ -126,7 +157,8 @@ func TestUpdateFilter_MatchesSubstring(t *testing.T) {
 }
 
 func TestUpdateFilter_CaseInsensitive(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.searchInput.SetValue("TERMINAL")
 	m.updateFilter()
 
@@ -139,7 +171,8 @@ func TestUpdateFilter_CaseInsensitive(t *testing.T) {
 }
 
 func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
-	settings := testSettings()
+	database := setupTestDatabase(t)
+	settings := testSettings(t, database)
 	m := NewModel(nil, settings, "0.1.0")
 	m.searchInput.SetValue("")
 	m.updateFilter()
@@ -150,7 +183,8 @@ func TestUpdateFilter_EmptyQueryShowsAll(t *testing.T) {
 }
 
 func TestUpdateFilter_NoMatch(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.searchInput.SetValue("zzzznotanapp")
 	m.updateFilter()
 
@@ -160,7 +194,8 @@ func TestUpdateFilter_NoMatch(t *testing.T) {
 }
 
 func TestUpdateFilter_MultipleMatches(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	// Both "Firefox" and "Finder" contain "fi" (case-insensitive)
 	m.searchInput.SetValue("fi")
 	m.updateFilter()
@@ -171,7 +206,8 @@ func TestUpdateFilter_MultipleMatches(t *testing.T) {
 }
 
 func TestMoveCursor_Down(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 
 	m = sendKey(t, m, "down")
 	if m.cursor != 1 {
@@ -185,7 +221,8 @@ func TestMoveCursor_Down(t *testing.T) {
 }
 
 func TestMoveCursor_Up(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.cursor = 3
 
 	m = sendKey(t, m, "up")
@@ -195,7 +232,8 @@ func TestMoveCursor_Up(t *testing.T) {
 }
 
 func TestMoveCursor_VimKeys(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 
 	m = sendKey(t, m, "j")
 	if m.cursor != 1 {
@@ -210,7 +248,8 @@ func TestMoveCursor_VimKeys(t *testing.T) {
 }
 
 func TestMoveCursor_ClampAtTop(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.cursor = 0
 
 	m = sendKey(t, m, "up")
@@ -220,7 +259,8 @@ func TestMoveCursor_ClampAtTop(t *testing.T) {
 }
 
 func TestMoveCursor_ClampAtBottom(t *testing.T) {
-	settings := testSettings()
+	database := setupTestDatabase(t)
+	settings := testSettings(t, database)
 	m := NewModel(nil, settings, "0.1.0")
 	m.cursor = len(settings) - 1
 
@@ -247,7 +287,8 @@ func TestMoveCursor_EmptyList(t *testing.T) {
 // ─── State Transitions ───────────────────────────────────────────
 
 func TestBrowse_SlashEntersFilterMode(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/")
 
 	if m.state != stateFilter {
@@ -256,7 +297,8 @@ func TestBrowse_SlashEntersFilterMode(t *testing.T) {
 }
 
 func TestFilter_EscReturnsToBrowse(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/")   // enter filter
 	m = sendKey(t, m, "esc") // leave filter
 
@@ -266,7 +308,8 @@ func TestFilter_EscReturnsToBrowse(t *testing.T) {
 }
 
 func TestBrowse_EnterFocusesRow(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter")
 
 	if m.state != stateRowFocus {
@@ -287,7 +330,8 @@ func TestBrowse_EnterNoopOnEmptyList(t *testing.T) {
 }
 
 func TestFilter_EnterFocusesRow(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/")     // enter filter
 	m = sendKey(t, m, "enter") // focus row from filter
 
@@ -297,7 +341,8 @@ func TestFilter_EnterFocusesRow(t *testing.T) {
 }
 
 func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 	m = sendKey(t, m, "esc")   // un-focus
 
@@ -310,7 +355,8 @@ func TestRowFocus_EscReturnsToBrowse(t *testing.T) {
 }
 
 func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter")    // focus row
 	m = sendKey(t, m, CANCEL_KEY) // un-focus
 
@@ -322,7 +368,8 @@ func TestRowFocus_CtrlQReturnsToBrowse(t *testing.T) {
 // ─── Column Cycling ──────────────────────────────────────────────
 
 func TestCycleColumn_FullCycle(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row, starts at colHotkey
 
 	if m.activeCol != colKey {
@@ -347,7 +394,8 @@ func TestCycleColumn_FullCycle(t *testing.T) {
 }
 
 func TestCycleColumn_ResetsRecording(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row at colKey
 	m = sendKey(t, m, "enter") // Enter to start recording hotkey
 
@@ -371,9 +419,10 @@ func TestCycleColumn_ResetsRecording(t *testing.T) {
 
 // ─── Mode Cycling ────────────────────────────────────────────────
 
-func TestCycleModeForward(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
-	// First setting (Firefox) starts at "default"
+func TestCycleMode(t *testing.T) {
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
+	// First setting (Finder) starts at "desktop"
 	m = sendKey(t, m, "enter")           // focus row
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
@@ -383,36 +432,38 @@ func TestCycleModeForward(t *testing.T) {
 
 	idx := m.searchedIndices[m.cursor]
 
-	// Cycle forward: fullscreen -> desktop
-	m = sendKey(t, m, " ")
-	if m.settings[idx].Mode != "desktop" {
-		t.Errorf("expected mode desktop, got %s", m.settings[idx].Mode)
-	}
-
-	// Cycle forward: desktop -> default (wrap)
+	// Cycle forward: desktop -> default
 	m = sendKey(t, m, " ")
 	if m.settings[idx].Mode != "default" {
-		t.Errorf("expected mode default (wrap), got %s", m.settings[idx].Mode)
+		t.Errorf("expected mode default, got %s", m.settings[idx].Mode)
+	}
+
+	// Cycle forward: default -> desktop (wrap)
+	m = sendKey(t, m, " ")
+	if m.settings[idx].Mode != "desktop" {
+		t.Errorf("expected mode desktop (wrap), got %s", m.settings[idx].Mode)
 	}
 }
 
-func TestCycleModeForward_WithEnterKey(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+func TestCycleMode_WithEnterKey(t *testing.T) {
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus row
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // go to colMode
 
 	m = sendKey(t, m, "enter")
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Mode != "desktop" {
-		t.Errorf("expected mode desktop after enter, got %s", m.settings[idx].Mode)
+	if m.settings[idx].Mode != "default" {
+		t.Errorf("expected mode default after enter, got %s", m.settings[idx].Mode)
 	}
 }
 
 // ─── Enable Toggling ─────────────────────────────────────────────
 
 func TestToggleEnabled(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
-	// Firefox starts enabled=true
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
+	// Finder starts enabled=false
 	m = sendKey(t, m, "enter")           // focus row
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
@@ -421,37 +472,39 @@ func TestToggleEnabled(t *testing.T) {
 		t.Fatalf("expected colEnabled, got %d", m.activeCol)
 	}
 
-	// Toggle: true -> false
-	m = sendKey(t, m, " ")
-	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Enabled != false {
-		t.Errorf("expected enabled=false after toggle, got true")
-	}
-
 	// Toggle: false -> true
 	m = sendKey(t, m, " ")
+	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].Enabled != true {
-		t.Errorf("expected enabled=true after second toggle, got false")
+		t.Errorf("expected enabled=true after toggle, got false")
+	}
+
+	// Toggle: true -> false
+	m = sendKey(t, m, " ")
+	if m.settings[idx].Enabled != false {
+		t.Errorf("expected enabled=false after second toggle, got true")
 	}
 }
 
 func TestToggleEnabled_WithEnterKey(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter")           // focus
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colEnabled
 
 	m = sendKey(t, m, "enter")
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].Enabled != false {
-		t.Errorf("expected enabled=false after enter toggle")
+	if m.settings[idx].Enabled != true {
+		t.Errorf("expected enabled=true after enter toggle")
 	}
 }
 
 // ─── Hotkey Recording ────────────────────────────────────────────
 
 func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row,
 
 	if m.activeCol != colKey {
@@ -465,7 +518,8 @@ func TestHotkeyRecording_EnterStartsRecording(t *testing.T) {
 }
 
 func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 
 	m = sendKey(t, m, " ") // start recording
@@ -475,7 +529,8 @@ func TestHotkeyRecording_SpaceStartsRecording(t *testing.T) {
 }
 
 func TestHotkeyRecording_RecordsKey(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(database, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 	m = sendKey(t, m, " ")     // start recording
 
@@ -483,8 +538,8 @@ func TestHotkeyRecording_RecordsKey(t *testing.T) {
 	m = sendKey(t, m, "a")
 
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].HotKey != "a" {
-		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey)
+	if m.settings[idx].HotKey != (sql.NullString{String: "a", Valid: true}) {
+		t.Errorf("expected hotkey 'a', got %q", m.settings[idx].HotKey.String)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after recording")
@@ -492,7 +547,8 @@ func TestHotkeyRecording_RecordsKey(t *testing.T) {
 }
 
 func TestHotkeyRecording_EscCancels(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 	m = sendKey(t, m, " ")     // start recording
 
@@ -505,20 +561,21 @@ func TestHotkeyRecording_EscCancels(t *testing.T) {
 	}
 	idx := m.searchedIndices[m.cursor]
 	if m.settings[idx].HotKey != originalHotkey {
-		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey, m.settings[idx].HotKey)
+		t.Errorf("hotkey should be unchanged after cancel, expected %q got %q", originalHotkey.String, m.settings[idx].HotKey.String)
 	}
 }
 
 func TestHotkeyRecording_BackspaceClears(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	// Firefox has hotkey "ctrl+1"
 	m = sendKey(t, m, "enter")     // focus row
 	m = sendKey(t, m, " ")         // start recording
 	m = sendKey(t, m, "backspace") // clear hotkey
 
 	idx := m.searchedIndices[m.cursor]
-	if m.settings[idx].HotKey != "" {
-		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey)
+	if m.settings[idx].HotKey != (sql.NullString{String: "", Valid: false}) {
+		t.Errorf("expected empty hotkey after backspace, got %q", m.settings[idx].HotKey.String)
 	}
 	if m.recordingHotkey {
 		t.Errorf("expected recordingHotkey=false after backspace clear")
@@ -528,7 +585,8 @@ func TestHotkeyRecording_BackspaceClears(t *testing.T) {
 // ─── Navigation While Focused ────────────────────────────────────
 
 func TestRowFocus_NavigateWithArrowKeys(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row 0
 
 	m = sendKey(t, m, "down") // move to row 1
@@ -546,7 +604,8 @@ func TestRowFocus_NavigateWithArrowKeys(t *testing.T) {
 }
 
 func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus
 	// Move to mode column so j/k don't interfere with hotkey recording
 	m = sendKey(t, m, SWITCH_COLUMN_KEY) // colMode
@@ -565,7 +624,8 @@ func TestRowFocus_NavigateWithVimKeys(t *testing.T) {
 // ─── Filter Integration ──────────────────────────────────────────
 
 func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.cursor = 4 // last item
 
 	// Enter filter mode and type a restrictive filter
@@ -584,7 +644,8 @@ func TestFilter_CursorClampsAfterFilterChange(t *testing.T) {
 }
 
 func TestFilter_NavigateDuringFilter(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/") // enter filter mode
 
 	m = sendKey(t, m, "down")
@@ -601,7 +662,8 @@ func TestFilter_NavigateDuringFilter(t *testing.T) {
 // ─── View Rendering ──────────────────────────────────────────────
 
 func TestView_ContainsLogo(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -612,7 +674,8 @@ func TestView_ContainsLogo(t *testing.T) {
 }
 
 func TestView_ContainsVersion(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -623,7 +686,8 @@ func TestView_ContainsVersion(t *testing.T) {
 }
 
 func TestView_ContainsColumnHeaders(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -636,12 +700,14 @@ func TestView_ContainsColumnHeaders(t *testing.T) {
 }
 
 func TestView_ContainsSettingNames(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	settings := testSettings(t, database)
+	m := NewModel(nil, settings, "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
 
-	for _, s := range testSettings() {
+	for _, s := range settings {
 		if !containsAny(view, s.Name) {
 			t.Errorf("expected view to contain setting name %q", s.Name)
 		}
@@ -660,7 +726,8 @@ func TestView_EmptyListMessage(t *testing.T) {
 }
 
 func TestView_ShowsBrowseHelp(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m.width = 120
 	m.height = 40
 	view := m.View()
@@ -671,7 +738,8 @@ func TestView_ShowsBrowseHelp(t *testing.T) {
 }
 
 func TestView_ShowsFilterHelp(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/")
 	m.width = 120
 	m.height = 40
@@ -683,7 +751,8 @@ func TestView_ShowsFilterHelp(t *testing.T) {
 }
 
 func TestView_ShowsRowFocusHelp(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter")
 	m.width = 120
 	m.height = 40
@@ -695,7 +764,8 @@ func TestView_ShowsRowFocusHelp(t *testing.T) {
 }
 
 func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row at colKey
 	m = sendKey(t, m, " ")     // start recording
 	m.width = 120
@@ -710,7 +780,8 @@ func TestView_ShowsRecordingHotkeyHelp(t *testing.T) {
 // ─── Exit Behavior ───────────────────────────────────────────────
 
 func TestBrowse_CtrlCExits(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
 
 	if cmd == nil {
@@ -724,7 +795,8 @@ func TestBrowse_CtrlCExits(t *testing.T) {
 }
 
 func TestFilter_CtrlCExits(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "/") // enter filter mode
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
@@ -739,7 +811,8 @@ func TestFilter_CtrlCExits(t *testing.T) {
 }
 
 func TestRowFocus_CtrlCExits(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	m = sendKey(t, m, "enter") // focus row
 
 	_, cmd := m.Update(specialKeyMsg(tea.KeyCtrlC))
@@ -756,7 +829,8 @@ func TestRowFocus_CtrlCExits(t *testing.T) {
 // ─── Window Size ─────────────────────────────────────────────────
 
 func TestWindowSize_UpdatesDimensions(t *testing.T) {
-	m := NewModel(nil, testSettings(), "0.1.0")
+	database := setupTestDatabase(t)
+	m := NewModel(nil, testSettings(t, database), "0.1.0")
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	m = result.(model)
 

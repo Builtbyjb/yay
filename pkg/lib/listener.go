@@ -18,7 +18,6 @@ Features:
 */
 
 func Listener() {
-
 	eventChan := hook.Start()
 	defer hook.End()
 
@@ -29,4 +28,27 @@ func Listener() {
 			fmt.Printf("Rawcode: %d \n", event.Rawcode)
 		}
 	}
+
+	/*
+		var mod string
+		var alt string
+		var key string
+
+		for e in keyEvent:
+			ks := RawcodeToKeyString(e.rawcode)
+			if AcceptedModifier(Ks):
+				mod = ks
+				continue
+			if mod != "":
+				if AcceptedAlt(ks):
+					alt = ks
+					continue
+				if alt != "":
+					hotkey = fmt.Sprintf("%s+%s+%s", mod, alt, ks)
+					DoSomething(hotkey)
+				else:
+					hotkey = fmt.Sprintf("%s+%s", mod, ks)
+					DoSomethingElse(hotkey)
+
+	*/
 }

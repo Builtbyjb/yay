@@ -1,6 +1,7 @@
 package macos
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"testing"
@@ -343,8 +344,8 @@ func TestGetSettingsWithApps(t *testing.T) {
 		nameSet[s.Name] = true
 
 		// Verify default values
-		if s.HotKey != "" {
-			t.Errorf("Expected empty hotkey for %s, got %q", s.Name, s.HotKey)
+		if s.HotKey != (sql.NullString{}) {
+			t.Errorf("Expected empty hotkey for %s, got %q", s.Name, s.HotKey.String)
 		}
 		if s.Mode != "default" {
 			t.Errorf("Expected mode 'default' for %s, got %q", s.Name, s.Mode)
