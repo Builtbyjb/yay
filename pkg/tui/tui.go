@@ -1,14 +1,12 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/Builtbyjb/yay/pkg/lib"
 	"github.com/Builtbyjb/yay/pkg/lib/core"
+	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	hook "github.com/robotn/gohook"
 )
 
 type model struct {
@@ -23,6 +21,8 @@ type model struct {
 	width           int
 	height          int
 	keys            []uint16
+	mod             string
+	key             uint16
 	recordingHotkey bool // true when waiting for the next key press for hotkey
 	errors          []string
 	debug           []int
@@ -71,7 +71,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleRowFocusKey(msg)
 		}
 		return m, nil
-	case lib.CustomKeyMsg:
+	case lib.CKeyMsg:
 		return m.RecordKey(msg)
 	}
 	return m, nil
@@ -93,22 +93,17 @@ func Run(db *core.Database, settings []core.Setting, version string) error {
 	m := NewModel(db, settings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
-	go func() {
-		eventChan := hook.Start()
-		defer hook.End()
+	go lib.Listener(db, func(event darwin.KeyEvent) {
+		p.Send(lib.CKeyMsg{Event: event})
+	})
 
-		for event := range eventChan {
-			p.Send(lib.CustomKeyMsg{Event: event})
-		}
-	}()
-
-	fModel, err := p.Run()
+	_, err := p.Run()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(fModel.(model).errors)
-	fmt.Println(fModel.(model).debug)
+	// fmt.Println(fModel.(model).errors)
+	// fmt.Println(fModel.(model).debug)
 
 	return nil
 }

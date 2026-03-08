@@ -1,4 +1,4 @@
-package macos
+package darwin
 
 import (
 	"database/sql"
@@ -46,7 +46,7 @@ func createTempAppDir(t *testing.T, apps map[string]string) string {
 
 func TestGetBinaryPath(t *testing.T) {
 	result := getBinaryPath("/Applications", "Safari")
-	expected := "/Applications/Safari/Contents/MacOS/"
+	expected := "/Applications/Safari/Contents/MacOS"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
@@ -54,7 +54,7 @@ func TestGetBinaryPath(t *testing.T) {
 
 func TestGetBinaryPathEmptyDir(t *testing.T) {
 	result := getBinaryPath("", "Safari")
-	expected := "/Safari/Contents/MacOS/"
+	expected := "Safari/Contents/MacOS"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
@@ -62,7 +62,7 @@ func TestGetBinaryPathEmptyDir(t *testing.T) {
 
 func TestGetBinaryPathEmptyAppName(t *testing.T) {
 	result := getBinaryPath("/Applications", "")
-	expected := "/Applications//Contents/MacOS/"
+	expected := "/Applications/Contents/MacOS"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
@@ -70,7 +70,7 @@ func TestGetBinaryPathEmptyAppName(t *testing.T) {
 
 func TestGetBinaryPathNestedDir(t *testing.T) {
 	result := getBinaryPath("/Users/me/Applications", "MyApp")
-	expected := "/Users/me/Applications/MyApp/Contents/MacOS/"
+	expected := "/Users/me/Applications/MyApp/Contents/MacOS"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
@@ -216,7 +216,7 @@ func TestGetAppsSetsCorrectBinaryPath(t *testing.T) {
 		t.Fatalf("Expected 1 app, got %d", len(apps))
 	}
 
-	expected := tmpDir + "/MyApp/Contents/MacOS/"
+	expected := tmpDir + "/MyApp.app/Contents/MacOS"
 	if apps[0].Path != expected {
 		t.Errorf("Expected path %q, got %q", expected, apps[0].Path)
 	}

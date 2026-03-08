@@ -6,14 +6,14 @@ import (
 	"slices"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
-	"github.com/Builtbyjb/yay/pkg/lib/macos"
+	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 )
 
 func GetDatabase() (*core.Database, error) {
 
 	switch runtime.GOOS {
 	case "darwin":
-		dbPath, err := macos.GetDatabasePath()
+		dbPath, err := darwin.GetDatabasePath()
 		if err != nil {
 			return nil, err
 		}
@@ -49,8 +49,8 @@ func Fetch() (*core.Database, []core.Setting, error) {
 			return nil, nil, err
 		}
 
-		dirs := macos.AppDirectories
-		settings, err := macos.GetSettings(*db, dirs)
+		dirs := darwin.AppDirectories
+		settings, err := darwin.GetSettings(*db, dirs)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -68,7 +68,7 @@ func Fetch() (*core.Database, []core.Setting, error) {
 func RawcodeToString(rawcode uint16) (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
-		key, ok := macos.RawToKeyDarwin[rawcode]
+		key, ok := darwin.RawToKeyDarwin[rawcode]
 		if !ok {
 			return "", fmt.Errorf("unknown rawcode: %d", rawcode)
 		}
@@ -85,7 +85,7 @@ func RawcodeToString(rawcode uint16) (string, error) {
 func VerifiedModifier(mod string) bool {
 	switch runtime.GOOS {
 	case "darwin":
-		if slices.Contains(macos.ModifiersMacos, mod) {
+		if slices.Contains(darwin.ModifiersMacos, mod) {
 			return true
 		}
 		return false

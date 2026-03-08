@@ -1,4 +1,4 @@
-package macos
+package darwin
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ func GetSettings(database core.Database, dirs []string) ([]core.Setting, error) 
 }
 
 func getBinaryPath(dir string, appName string) string {
-	return dir + "/" + appName + "/Contents/MacOS/"
+	return filepath.Join(dir, appName, "Contents", "MacOS")
 }
 
 func getIconPath(dir string, appName string) string {
@@ -41,7 +41,7 @@ func getIconPath(dir string, appName string) string {
 		return ""
 	}
 
-	return dir + "/" + appName + "/Contents/Resources/" + iconName
+	return filepath.Join(dir, appName, "Contents", "Resources", iconName)
 }
 
 func getApps(dirs []string) []core.App {
@@ -58,8 +58,8 @@ func getApps(dirs []string) []core.App {
 			if ok {
 				apps = append(apps, core.App{
 					Name:     appName,
-					Path:     getBinaryPath(dir, appName),
-					IconPath: getIconPath(dir, appName),
+					Path:     getBinaryPath(dir, entry.Name()),
+					IconPath: getIconPath(dir, entry.Name()),
 				})
 			}
 		}
