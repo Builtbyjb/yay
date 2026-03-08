@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-
 	"github.com/Builtbyjb/yay/pkg/lib"
 	"github.com/Builtbyjb/yay/pkg/lib/core"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -23,6 +21,8 @@ type model struct {
 	width           int
 	height          int
 	keys            []uint16
+	mod             string
+	key             uint16
 	recordingHotkey bool // true when waiting for the next key press for hotkey
 	errors          []string
 	debug           []int
@@ -102,13 +102,13 @@ func Run(db *core.Database, settings []core.Setting, version string) error {
 		}
 	}()
 
-	fModel, err := p.Run()
+	_, err := p.Run()
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(fModel.(model).errors)
-	fmt.Println(fModel.(model).debug)
+	// fmt.Println(fModel.(model).errors)
+	// fmt.Println(fModel.(model).debug)
 
 	return nil
 }

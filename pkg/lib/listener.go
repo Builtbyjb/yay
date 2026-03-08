@@ -2,8 +2,10 @@ package lib
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
+	"github.com/Builtbyjb/yay/pkg/lib/macos"
 	hook "github.com/robotn/gohook"
 )
 
@@ -49,9 +51,16 @@ func Listener(db *core.Database) {
 				}
 
 				if mod == "command+shift" {
-					hotkey := fmt.Sprintf("%s+%s", mod, k)
-					fmt.Println("Opening a dock app", hotkey)
-					continue
+					pos, err := strconv.ParseUint(k, 10, 16)
+					if err != nil {
+						fmt.Println("Error parsing position:", err)
+						continue
+					}
+
+					if err := macos.LaunchDockApps(uint16(pos)); err != nil {
+						fmt.Println("Error launching dock app:", err)
+						continue
+					}
 				}
 
 				hotkey := fmt.Sprintf("%s+%s", mod, k)
@@ -66,7 +75,12 @@ func Listener(db *core.Database) {
 					continue
 				}
 
-				fmt.Println("Application:", setting.Name)
+				if setting.Enabled {
+					if err := macos.Launch(setting.Path, setting.Name, setting.Mode); err != nil {
+						fmt.Println("Error launching application:", err)
+						continue
+					}
+				}
 			}
 
 			if VerifiedModifier(k) {
