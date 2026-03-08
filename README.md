@@ -29,3 +29,8 @@ yay version
 # Display help message
 yay help
 ```
+
+##
+
+> [!NOTE]
+>  To enable switching between spaces on **Mac Os** enable the "When switching to an application, switch to a Space with open windows for the application" option in **System Settings** > **Desktop & Dock** > **Mission Control**.
