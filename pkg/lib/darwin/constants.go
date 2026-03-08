@@ -1,4 +1,4 @@
-package macos
+package darwin
 
 var AppDirectories = []string{
 	"/Applications",

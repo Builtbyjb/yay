@@ -2,8 +2,6 @@ package tui
 
 import (
 	"strings"
-
-	hook "github.com/robotn/gohook"
 )
 
 func padRight(s string, width int) string {
@@ -44,12 +42,4 @@ func indexOf(slice []string, val string) int {
 		}
 	}
 	return 0
-}
-
-func RawcodeToString(rawcode int) string {
-	return hook.RawcodetoKeychar(uint16(rawcode))
-}
-
-func VerifiedModifier(mod string) bool {
-	return true
 }

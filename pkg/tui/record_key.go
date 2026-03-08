@@ -5,27 +5,26 @@ import (
 	"fmt"
 
 	"github.com/Builtbyjb/yay/pkg/lib"
+	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	tea "github.com/charmbracelet/bubbletea"
-	hook "github.com/robotn/gohook"
 )
 
-func (m model) RecordKey(msg lib.CustomKeyMsg) (tea.Model, tea.Cmd) {
+func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
 	if m.recordingHotkey {
-		m.keys = append(m.keys, msg.Event.Rawcode)
-		// m.debug = append(m.debug, int(msg.Event.Rawcode))
+		m.keys = append(m.keys, msg.Event.Keycode)
+		// m.debug = append(m.debug, int(msg.Event.Keycode))
 
 		m.key = m.keys[0]
 		m.keys = m.keys[1:]
+		k, err := lib.RawcodeToString(m.key)
 
-		switch msg.Event.Kind {
-		case hook.KeyDown:
+		if err != nil {
+			m.errors = append(m.errors, fmt.Sprintf("Unknown modifier key: %s", k))
+			m.recordingHotkey = false
+		}
 
-			k, err := lib.RawcodeToString(m.key)
-			if err != nil {
-				m.errors = append(m.errors, fmt.Sprintf("Unknown modifier key: %s", k))
-				m.recordingHotkey = false
-			}
-
+		switch msg.Event.EventType {
+		case darwin.EventKeyDown:
 			if m.mod != "" {
 				if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
 					hotkey := fmt.Sprintf("%s+%s", m.mod, k)
@@ -42,6 +41,7 @@ func (m model) RecordKey(msg lib.CustomKeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 
+		case darwin.EventFlagsChanged:
 			if lib.VerifiedModifier(k) {
 				m.mod = k
 			}

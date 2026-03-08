@@ -1,4 +1,4 @@
-package macos
+package darwin
 
 var ModifiersMacos = []string{
 	"l-shift",
