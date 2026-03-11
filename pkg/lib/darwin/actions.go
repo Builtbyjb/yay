@@ -3,7 +3,6 @@ package darwin
 import (
 	"fmt"
 	"os/exec"
-	"path/filepath"
 )
 
 /*
@@ -13,7 +12,7 @@ The activate switches to the app or focuses it if it's already running.
 */
 
 func Launch(path string, app string, mode string) error {
-	binPath := filepath.Join(path, app)
+	// binPath := filepath.Join(path, app)
 	// script := fmt.Sprintf(`
 	// 	tell application %q to activate
 	// 	tell application "System Events"
@@ -28,10 +27,24 @@ func Launch(path string, app string, mode string) error {
 	// 		set frontmost of braveProcess to true
 	// 	end tell
 	// `
-	script := fmt.Sprintf(` tell application %q to activate `, binPath)
-	exec.Command("osascript", "-e", script).Run()
-	// exec.Command("open", "-a", binPath).Run()
-	fmt.Println(binPath)
+	script := fmt.Sprintf(`
+		set appName to %q
+
+		-- Open an application if minimized
+		tell application "System Events"
+			tell application process "Dock"
+				click UI element appName of list 1
+			end tell
+		end tell
+
+		tell application appName
+			activate
+		end tell
+		`, app)
+	err := exec.Command("osascript", "-e", script).Run()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 	return nil
 }
 
@@ -40,25 +53,16 @@ func LaunchDockApps(pos uint16) error {
 	return nil
 }
 
-// set theAppName to "Safari" -- ← change this
-
-// if application theAppName is running then
-//     tell application "System Events"
-//         tell application process "Dock"
-//             try
-//                 click UI element theAppName of list 1
-//             end try
-//         end tell
-//     end tell
-// else
-//     tell application theAppName to activate -- will also launch it
-// end if
-
-// set theAppName to "Safari"
-
-// tell application theAppName
-//     activate
-// end tell
+func SwitchToDefaultDesktop() {
+	script := `
+		tell application "System Events"
+   			-- key code 18 using {control down} -- key code 18 = "1"
+        	-- keystroke "1" using control down
+        	tell application "Finder" to activate
+         end tell
+        `
+	exec.Command("osascript", "-e", script).Run()
+}
 
 // delay 0.2 -- small breathing room
 

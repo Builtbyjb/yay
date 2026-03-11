@@ -86,6 +86,12 @@ func Listener(db *core.Database, onEvent func(darwin.KeyEvent)) {
 
 			hotkey := fmt.Sprintf("%s+%s", mod, k)
 
+			if hotkey == "l-command+esc" || hotkey == "r-command+esc" {
+				go func() {
+					darwin.SwitchToDefaultDesktop()
+				}()
+			}
+
 			setting, err := db.FindByHotkey(hotkey)
 			if err != nil {
 				fmt.Println("Error fetching setting:", err)
