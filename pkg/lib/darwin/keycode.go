@@ -63,7 +63,7 @@ var RawToKeyDarwin = map[uint16]string{
 	49:  "space",
 	50:  "`",
 	51:  "backspace",
-	53:  "escape",
+	53:  "esc",
 	54:  "r-command", // right command
 	55:  "l-command", // left command
 	56:  "l-shift",

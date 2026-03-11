@@ -34,12 +34,3 @@ func displayKey(h string) string {
 	}
 	return h
 }
-
-func indexOf(slice []string, val string) int {
-	for i, s := range slice {
-		if s == val {
-			return i
-		}
-	}
-	return 0
-}

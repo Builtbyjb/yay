@@ -3,6 +3,7 @@ package tui
 import (
 	"database/sql"
 	"fmt"
+	"slices"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -269,7 +270,7 @@ func (m *model) cycleMode() {
 	}
 	idx := m.searchedIndices[m.cursor]
 	prev := m.settings[idx].Mode
-	currentIdx := indexOf(AvailableModes, prev)
+	currentIdx := slices.Index(AvailableModes, prev)
 	nextIdx := (currentIdx + 1) % len(AvailableModes)
 	m.settings[idx].Mode = AvailableModes[nextIdx]
 	if err := m.db.UpdateMode(m.settings[idx].Id, m.settings[idx].Mode); err != nil {
