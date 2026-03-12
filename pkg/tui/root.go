@@ -6,7 +6,6 @@ import (
 	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
@@ -52,40 +51,6 @@ func NewModel(db *core.Database, settings []core.Setting, version string) model 
 
 func (m model) Init() tea.Cmd {
 	return nil
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
-
-	case tea.KeyMsg:
-		switch m.state {
-		case stateBrowse:
-			return m.HandleBrowseKey(msg)
-		case stateFilter:
-			return m.SearchUpdate(msg)
-		case stateRowFocus:
-			return m.handleRowFocusKey(msg)
-		}
-		return m, nil
-	case lib.CKeyMsg:
-		return m.RecordKey(msg)
-	}
-	return m, nil
-}
-
-func (m model) View() string {
-	contents := []string{}
-	contents = append(contents, m.HeaderView())
-	contents = append(contents, m.SearchView())
-	contents = append(contents, m.TableView())
-	contents = append(contents, m.StatusLineView())
-	contents = append(contents, m.HelpView())
-
-	return lipgloss.JoinVertical(lipgloss.Left, contents...)
 }
 
 // Starts the TUI

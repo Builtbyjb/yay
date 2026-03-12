@@ -4,129 +4,76 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strings"
 
+	"github.com/Builtbyjb/yay/pkg/lib"
+	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
 )
 
-func (m model) TableView() string {
-	contents := []string{}
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		return m, nil
 
-	// Set table height
-	maxRows := max(m.height-20, 3)
-
-	// Calculate scroll window
-	startIdx := 0
-	if len(m.searchedIndices) > maxRows {
-		if m.cursor >= maxRows {
-			startIdx = m.cursor - maxRows + 1
+	case tea.KeyMsg:
+		switch m.state {
+		case stateBrowse:
+			return m.HandleBrowseKey(msg)
+		case stateFilter:
+			return m.SearchUpdate(msg)
+		case stateRowFocus:
+			return m.handleRowFocusKey(msg)
 		}
-		if startIdx+maxRows > len(m.searchedIndices) {
-			startIdx = len(m.searchedIndices) - maxRows
-		}
+		return m, nil
+	case lib.CKeyMsg:
+		return m.RecordKey(msg)
 	}
+	return m, nil
+}
 
-	endIdx := min(startIdx+maxRows, len(m.searchedIndices))
+func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
+	if m.recordingHotkey {
+		m.keys = append(m.keys, msg.Event.Keycode)
+		// m.debug = append(m.debug, int(msg.Event.Keycode))
 
-	if len(m.searchedIndices) == 0 {
-		contents = append(contents, lipgloss.JoinVertical(
-			lipgloss.Left,
-			DimStyle.Render("No matching applications."),
-			"\n",
-		))
-	} else {
-		table := table.New().
-			Border(lipgloss.NormalBorder()).
-			Width(m.width).
-			StyleFunc(func(row, col int) lipgloss.Style {
-				isHeader := row == table.HeaderRow
-				isCursorRow := row >= 0 && (startIdx+row) == m.cursor
-				isFocused := isCursorRow && m.state == stateRowFocus
+		m.key = m.keys[0]
+		m.keys = m.keys[1:]
+		k, err := lib.RawcodeToString(m.key)
 
-				base := lipgloss.NewStyle().
-					Padding(0, 1).
-					Foreground(lipgloss.Color(PRIMARY_COLOR))
+		if err != nil {
+			m.errors = append(m.errors, fmt.Sprintf("Unknown modifier key: %s", k))
+			m.recordingHotkey = false
+		}
 
-				if isHeader {
-					return base.Bold(true).Foreground(lipgloss.Color(PRIMARY_COLOR))
-				}
-
-				// Default row style
-				style := base
-				if isCursorRow {
-					style = CursorRowStyle // your existing cursor style
-				} else {
-					style = NormalRowStyle // your normal row style
-				}
-
-				// When row-focused → per-cell highlighting
-				if isFocused {
-					style = FocusedRowStyle // base for whole row
-
-					// Active (editing/recording) column gets stronger highlight
-					if (col == 1 && m.activeCol == colKey) ||
-						(col == 2 && m.activeCol == colMode) ||
-						(col == 3 && m.activeCol == colEnabled) {
-						style = ActiveCellStyle
+		switch msg.Event.EventType {
+		case darwin.EventKeyDown:
+			if m.mod != "" {
+				if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
+					hotkey := fmt.Sprintf("%s+%s", m.mod, k)
+					idx := m.searchedIndices[m.cursor]
+					// m.errors = append(m.errors, hotkey)
+					m.settings[idx].HotKey = sql.NullString{String: hotkey, Valid: true}
+					if err := m.db.UpdateHotkey(m.settings[idx].Id, m.settings[idx].HotKey); err != nil {
+						m.errors = append(m.errors, err.Error())
 					}
+					m.recordingHotkey = false
+					m.mod = ""
+
+					return m, nil
 				}
-
-				style = style.Align(lipgloss.Left).Padding(0, 1)
-
-				return style
-			})
-
-		table.Headers("Application", "HotKey", "Mode", "Enabled")
-
-		// Add only the visible rows
-		for i := startIdx; i < endIdx; i++ {
-			idx := m.searchedIndices[i]
-			s := m.settings[idx]
-
-			isCursor := i == m.cursor
-			isFocused := isCursor && m.state == stateRowFocus
-
-			prefix := "  "
-			if isCursor {
-				prefix = "> "
 			}
 
-			name := truncate(s.Name, colWidthName-3) // -3 for safety + prefix
-			name = prefix + name
-
-			hotkey := displayKey(s.HotKey.String)
-
-			// Special case: recording hotkey
-			if isFocused && m.activeCol == colKey && m.recordingHotkey {
-				hotkeyDisplay := "recording..."
-				hotkey = hotkeyDisplay
+		case darwin.EventFlagsChanged:
+			if lib.VerifiedModifier(k) {
+				m.mod = k
 			}
-
-			mode := s.Mode
-			enabled := formatBool(s.Enabled)
-
-			table.Row(name, hotkey, mode, enabled)
-		}
-
-		contents = append(contents, lipgloss.JoinVertical(
-			lipgloss.Left,
-			table.Render(),
-		))
-
-		// Scroll indicator
-		if len(m.searchedIndices) >= endIdx {
-			contents = append(contents, lipgloss.JoinVertical(
-				lipgloss.Left,
-				DimStyle.Render(fmt.Sprintf("showing %d-%d of %d", startIdx+1, endIdx, len(m.searchedIndices))),
-			))
 		}
 	}
 
-	return lipgloss.JoinVertical(
-		lipgloss.Left,
-		contents...,
-	)
+	return m, nil
 }
 
 func (m model) HandleBrowseKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -303,4 +250,63 @@ func (m model) handleHotkeyRecording(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) SearchUpdate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case EXIT_KEY:
+		return m, tea.Quit
+
+	case CANCEL_KEY:
+		m.state = stateBrowse
+		m.searchInput.Blur()
+		return m, nil
+
+	case "up":
+		m.moveCursor(-1)
+		return m, nil
+
+	case "down":
+		m.moveCursor(1)
+		return m, nil
+
+	case "enter":
+		if len(m.searchedIndices) > 0 {
+			m.state = stateRowFocus
+			m.activeCol = colKey
+			m.recordingHotkey = false
+			m.searchInput.Blur()
+		}
+		return m, nil
+	}
+
+	// Pass key to text input for filtering
+	var cmd tea.Cmd
+	m.searchInput, cmd = m.searchInput.Update(msg)
+	m.updateFilter()
+	// Ensure cursor is in bounds after filter changes
+	if m.cursor >= len(m.searchedIndices) {
+		if len(m.searchedIndices) > 0 {
+			m.cursor = len(m.searchedIndices) - 1
+		} else {
+			m.cursor = 0
+		}
+	}
+	return m, cmd
+}
+
+func (m *model) updateFilter() {
+	query := strings.ToLower(m.searchInput.Value())
+	m.searchedIndices = make([]int, 0, len(m.settings))
+	for i, s := range m.settings {
+		if query == "" || strings.Contains(strings.ToLower(s.Name), query) {
+			m.searchedIndices = append(m.searchedIndices, i)
+		}
+	}
+	// Clamp cursor to stay within the new filtered list
+	if len(m.searchedIndices) == 0 {
+		m.cursor = 0
+	} else if m.cursor >= len(m.searchedIndices) {
+		m.cursor = len(m.searchedIndices) - 1
+	}
 }

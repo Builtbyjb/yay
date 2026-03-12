@@ -2,45 +2,7 @@ package darwin
 
 /*
 #cgo LDFLAGS: -framework ApplicationServices
-#include <ApplicationServices/ApplicationServices.h>
-
-extern int keyEventCallback(long long keycode, long long flags, long long eventType);
-
-static inline CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    if (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged) {
-        long long keycode = (long long)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-        long long flags   = (long long)CGEventGetFlags(event);
-        long long evType  = (long long)type;
-        int consumed = keyEventCallback(keycode, flags, evType);
-        if (consumed) {
-            return NULL;
-        }
-    }
-    return event;
-}
-
-static inline void startEventTap() {
-    CGEventMask mask = (1 << kCGEventKeyDown) | (1 << kCGEventKeyUp) | (1 << kCGEventFlagsChanged);
-
-    CFMachPortRef tap = CGEventTapCreate(
-        kCGSessionEventTap,
-        kCGHeadInsertEventTap,
-        kCGEventTapOptionDefault,
-        mask,
-        eventCallback,
-        NULL
-    );
-
-    if (!tap) {
-        return;
-    }
-
-    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
-    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
-    CGEventTapEnable(tap, true);
-
-    CFRunLoopRun();
-}
+#include <keyevent.h>
 */
 import "C"
 
@@ -74,6 +36,8 @@ func SetKeyHandler(handler func(KeyEvent) bool) {
 	keyHandler = handler
 }
 
+// cgo directive
+//
 //export keyEventCallback
 func keyEventCallback(keycode C.longlong, flags C.longlong, eventType C.longlong) C.int {
 	ev := KeyEvent{
@@ -92,8 +56,6 @@ func keyEventCallback(keycode C.longlong, flags C.longlong, eventType C.longlong
 	return 0 // pass through
 }
 
-// StartEventTap starts the global event tap. It blocks forever (runs a
-// CFRunLoop), so call it in a goroutine.
 func StartEventTap() {
 	C.startEventTap()
 }
