@@ -94,20 +94,38 @@ func (d *Database) ClearHotkey(id int) error {
 }
 
 func (d *Database) Refresh(apps []App) ([]Setting, error) {
-	// Clear settings
-	_, err := d.conn.Exec("DELETE FROM settings")
+	// Build a map of app paths for quick lookup
+	appMap := make(map[string]App)
+	for _, app := range apps {
+		appMap[app.Path] = app
+	}
+
+	// Fetch all existing settings from the database
+	existingPaths, err := d.getExistingPaths()
 	if err != nil {
 		return nil, err
 	}
 
 	// Add apps in apps list but not in the database
 	for _, app := range apps {
-		_, err := d.conn.Exec(
-			"INSERT INTO settings (name, bin_name, path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)",
-			app.Name, app.BinName, app.Path, sql.NullString{String: "", Valid: false}, "default", true,
-		)
-		if err != nil {
-			return nil, err
+		if _, exists := existingPaths[app.Path]; !exists {
+			_, err := d.conn.Exec(
+				"INSERT INTO settings (name, path, bin_name, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)",
+				app.Name, app.Path, app.BinName, sql.NullString{String: "", Valid: false}, "default", true,
+			)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Remove apps in the database but not in the apps list
+	for path := range existingPaths {
+		if _, exists := appMap[path]; !exists {
+			_, err := d.conn.Exec("DELETE FROM settings WHERE path = ?", path)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -118,6 +136,27 @@ func (d *Database) Refresh(apps []App) ([]Setting, error) {
 	}
 
 	return settings, nil
+}
+func (d *Database) getExistingPaths() (map[string]struct{}, error) {
+	rows, err := d.conn.Query("SELECT * FROM settings")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	existingPaths := make(map[string]struct{})
+	for rows.Next() {
+		var s Setting
+		if err := rows.Scan(&s.Id, &s.Name, &s.BinName, &s.Path, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+			return nil, err
+		}
+		existingPaths[s.Path] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return existingPaths, nil
 }
 
 func (d *Database) GetAllSettings() ([]Setting, error) {
