@@ -137,6 +137,7 @@ func (d *Database) Refresh(apps []App) ([]Setting, error) {
 
 	return settings, nil
 }
+
 func (d *Database) getExistingPaths() (map[string]struct{}, error) {
 	rows, err := d.conn.Query("SELECT * FROM settings")
 	if err != nil {

@@ -1,14 +1,6 @@
 package darwin
 
-var ModifiersMacos = []string{
-	"l-shift",
-	"r-shift",
-	"l-option",
-	"r-option",
-	"control",
-	"l-command",
-	"r-command",
-}
+var ModifiersMacos = []string{"shift", "option", "control", "command"}
 
 // https://github.com/robotn/gohook/blob/master/tables.go
 var RawToKeyDarwin = map[uint16]string{
@@ -64,14 +56,14 @@ var RawToKeyDarwin = map[uint16]string{
 	50:  "`",
 	51:  "backspace",
 	53:  "esc",
-	54:  "r-command", // right command
-	55:  "l-command", // left command
-	56:  "l-shift",
+	54:  "command", // right command
+	55:  "command", // left command
+	56:  "shift",   // left shift
 	57:  "capslock",
-	58:  "l-option",
+	58:  "option", // left option
 	59:  "control",
-	60:  "r-shift",
-	61:  "r-option",
+	60:  "shift",  // right shift
+	61:  "option", // right option
 	62:  "capslock",
 	65:  "decimal point",
 	67:  "multiply",

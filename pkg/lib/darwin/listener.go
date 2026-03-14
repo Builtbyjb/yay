@@ -36,8 +36,7 @@ func Listener(db *core.Database, onEvent func(KeyEvent)) {
 				if IsModifierPressed(event.Flags, event.Keycode) {
 					if mod == "" {
 						mod = k
-					} else if (mod == "l-command" || mod == "r-command") &&
-						(k == "l-shift" || k == "r-shift") {
+					} else if (mod == "command") && (k == "shift") {
 						mod = "command+shift"
 					}
 				} else {
@@ -65,7 +64,7 @@ func Listener(db *core.Database, onEvent func(KeyEvent)) {
 
 			hotkey := fmt.Sprintf("%s+%s", mod, k)
 
-			if hotkey == "l-command+esc" || hotkey == "r-command+esc" {
+			if hotkey == "command+esc" {
 				go func() {
 					SwitchToDefaultDesktop()
 				}()
