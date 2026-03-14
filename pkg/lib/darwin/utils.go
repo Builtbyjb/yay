@@ -87,3 +87,20 @@ func GetDatabasePath() (string, error) {
 
 	return dbPath, nil
 }
+
+// isModifierPressed checks whether the modifier flag corresponding to the
+// given keycode is currently set in the CGEvent flags bitmask.
+func IsModifierPressed(flags uint64, keycode uint16) bool {
+	switch keycode {
+	case 55, 54: // l-command, r-command
+		return flags&0x100000 != 0
+	case 56, 60: // l-shift, r-shift
+		return flags&0x020000 != 0
+	case 58, 61: // l-option, r-option
+		return flags&0x080000 != 0
+	case 59: // control
+		return flags&0x040000 != 0
+	default:
+		return false
+	}
+}

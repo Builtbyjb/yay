@@ -3,7 +3,6 @@ package tui
 import (
 	"github.com/Builtbyjb/yay/pkg/lib"
 	"github.com/Builtbyjb/yay/pkg/lib/core"
-	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -58,7 +57,7 @@ func Run(db *core.Database, settings []core.Setting, version string) error {
 	m := NewModel(db, settings, version)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
-	go lib.Listener(db, func(event darwin.KeyEvent) {
+	go lib.KeyEventListener(db, func(event lib.KeyEvent) {
 		p.Send(lib.CKeyMsg{Event: event})
 	})
 

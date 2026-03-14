@@ -59,7 +59,7 @@ var startCmd = &cobra.Command{
 		}
 		defer db.Close()
 
-		lib.Listener(db, nil)
+		lib.KeyEventListener(db, nil)
 	},
 }
 

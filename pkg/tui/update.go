@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Builtbyjb/yay/pkg/lib"
-	"github.com/Builtbyjb/yay/pkg/lib/darwin"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -49,7 +48,7 @@ func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Event.EventType {
-		case darwin.EventKeyDown:
+		case lib.EventKeyDown:
 			if m.mod != "" {
 				if len(m.searchedIndices) > 0 && m.cursor < len(m.searchedIndices) {
 					hotkey := fmt.Sprintf("%s+%s", m.mod, k)
@@ -66,7 +65,7 @@ func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-		case darwin.EventFlagsChanged:
+		case lib.EventFlagsChanged:
 			if lib.VerifiedModifier(k) {
 				m.mod = k
 			}
