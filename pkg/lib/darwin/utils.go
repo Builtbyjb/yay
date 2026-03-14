@@ -8,7 +8,12 @@ import (
 	"strings"
 
 	"github.com/Builtbyjb/yay/pkg/lib/core"
+	"howett.net/plist"
 )
+
+type infoPlist struct {
+	CFBundleExecutable string `plist:"CFBundleExecutable"`
+}
 
 func GetSettings(database core.Database, dirs []string) ([]core.Setting, error) {
 	apps := getApps(dirs)
@@ -57,9 +62,9 @@ func getApps(dirs []string) []core.App {
 			appName, ok := strings.CutSuffix(entry.Name(), ".app")
 			if ok {
 				apps = append(apps, core.App{
-					Name:     appName,
-					Path:     getBinaryPath(dir, entry.Name()),
-					IconPath: getIconPath(dir, entry.Name()),
+					Name:    appName,
+					BinName: getBinaryName(dir, entry.Name()),
+					Path:    getBinaryPath(dir, entry.Name()),
 				})
 			}
 		}
@@ -86,6 +91,24 @@ func GetDatabasePath() (string, error) {
 	}
 
 	return dbPath, nil
+}
+
+func getBinaryName(dir string, appName string) string {
+	filePath := filepath.Join(dir, appName, "Contents", "Info.plist")
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Printf("Error reading file: %v\n", err)
+		return ""
+	}
+
+	var info infoPlist
+	_, err = plist.Unmarshal(data, &info)
+	if err != nil {
+		fmt.Printf("Error unmarshaling plist: %v\n", err)
+		return ""
+	}
+
+	return info.CFBundleExecutable
 }
 
 // isModifierPressed checks whether the modifier flag corresponding to the

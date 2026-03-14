@@ -89,8 +89,8 @@ func TestRefreshInsertsNewApps(t *testing.T) {
 	defer db.Close()
 
 	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App2", Path: "/usr/bin/app2"},
 	}
 
 	settings, err := db.Refresh(apps)
@@ -109,9 +109,7 @@ func TestRefreshInsertsNewApps(t *testing.T) {
 		if s.Path != apps[i].Path {
 			t.Errorf("Expected path %q, got %q", apps[i].Path, s.Path)
 		}
-		if s.IconPath != apps[i].IconPath {
-			t.Errorf("Expected icon_path %q, got %q", apps[i].IconPath, s.IconPath)
-		}
+
 		if s.HotKey != (sql.NullString{}) {
 			t.Errorf("Expected empty hotkey, got %q", s.HotKey.String)
 		}
@@ -133,15 +131,15 @@ func TestRefreshRemovesStaleApps(t *testing.T) {
 
 	// Seed with 3 apps
 	initialApps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
-		{Name: "App3", Path: "/usr/bin/app3", IconPath: "/icons/app3.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App2", Path: "/usr/bin/app2"},
+		{Name: "App3", Path: "/usr/bin/app3"},
 	}
 	seedApps(t, db, initialApps)
 
 	// Refresh with only 1 app — the other 2 should be removed
 	updatedApps := []App{
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
+		{Name: "App2", Path: "/usr/bin/app2"},
 	}
 
 	settings, err := db.Refresh(updatedApps)
@@ -163,15 +161,15 @@ func TestRefreshAddsNewAndRemovesStale(t *testing.T) {
 	defer db.Close()
 
 	initialApps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App2", Path: "/usr/bin/app2"},
 	}
 	seedApps(t, db, initialApps)
 
 	// Remove App1, keep App2, add App3
 	updatedApps := []App{
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
-		{Name: "App3", Path: "/usr/bin/app3", IconPath: "/icons/app3.png"},
+		{Name: "App2", Path: "/usr/bin/app2"},
+		{Name: "App3", Path: "/usr/bin/app3"},
 	}
 
 	settings, err := db.Refresh(updatedApps)
@@ -204,7 +202,7 @@ func TestRefreshPreservesCustomSettings(t *testing.T) {
 	defer db.Close()
 
 	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
 	}
 
 	settings := seedApps(t, db, apps)
@@ -251,8 +249,8 @@ func TestRefreshEmptyAppList(t *testing.T) {
 
 	// Seed with apps
 	initialApps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App2", Path: "/usr/bin/app2"},
 	}
 	seedApps(t, db, initialApps)
 
@@ -272,7 +270,7 @@ func TestRefreshNoChange(t *testing.T) {
 	defer db.Close()
 
 	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
 	}
 
 	settings1 := seedApps(t, db, apps)
@@ -300,8 +298,8 @@ func TestRefreshWithDuplicatePaths(t *testing.T) {
 	// If the app list contains duplicate paths, only one should be inserted
 	// (the last one in the map wins, but both point to the same path)
 	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App1-Duplicate", Path: "/usr/bin/app1", IconPath: "/icons/app1-dup.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App1-Duplicate", Path: "/usr/bin/app1"},
 	}
 
 	settings, err := db.Refresh(apps)
@@ -329,9 +327,8 @@ func TestRefreshLargeAppList(t *testing.T) {
 	apps := make([]App, 100)
 	for i := 0; i < 100; i++ {
 		apps[i] = App{
-			Name:     "App" + string(rune('A'+i%26)),
-			Path:     "/usr/bin/app" + string(rune('0'+i)),
-			IconPath: "/icons/app" + string(rune('0'+i)) + ".png",
+			Name: "App" + string(rune('A'+i%26)),
+			Path: "/usr/bin/app" + string(rune('0'+i)),
 		}
 	}
 
@@ -342,47 +339,6 @@ func TestRefreshLargeAppList(t *testing.T) {
 
 	if len(settings) != 100 {
 		t.Fatalf("Expected 100 settings, got %d", len(settings))
-	}
-}
-
-func TestGetExistingPathsEmpty(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	paths, err := db.getExistingPaths()
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if len(paths) != 0 {
-		t.Fatalf("Expected 0 paths, got %d", len(paths))
-	}
-}
-
-func TestGetExistingPathsAfterInsert(t *testing.T) {
-	db := setupTestDatabase(t)
-	defer db.Close()
-
-	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
-	}
-	seedApps(t, db, apps)
-
-	paths, err := db.getExistingPaths()
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if len(paths) != 2 {
-		t.Fatalf("Expected 2 paths, got %d", len(paths))
-	}
-
-	if _, ok := paths["/usr/bin/app1"]; !ok {
-		t.Error("Expected /usr/bin/app1 to be present")
-	}
-	if _, ok := paths["/usr/bin/app2"]; !ok {
-		t.Error("Expected /usr/bin/app2 to be present")
 	}
 }
 
@@ -405,9 +361,9 @@ func TestGetUpdatedSettingsReturnsAll(t *testing.T) {
 	defer db.Close()
 
 	apps := []App{
-		{Name: "App1", Path: "/usr/bin/app1", IconPath: "/icons/app1.png"},
-		{Name: "App2", Path: "/usr/bin/app2", IconPath: "/icons/app2.png"},
-		{Name: "App3", Path: "/usr/bin/app3", IconPath: "/icons/app3.png"},
+		{Name: "App1", Path: "/usr/bin/app1"},
+		{Name: "App2", Path: "/usr/bin/app2"},
+		{Name: "App3", Path: "/usr/bin/app3"},
 	}
 	seedApps(t, db, apps)
 

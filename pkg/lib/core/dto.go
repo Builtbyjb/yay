@@ -3,19 +3,19 @@ package core
 import "database/sql"
 
 type App struct {
-	Name     string
-	Path     string
-	IconPath string
+	Name    string
+	BinName string
+	Path    string
 }
 
 type Setting struct {
-	Id       int
-	Name     string
-	Path     string
-	IconPath string
-	HotKey   sql.NullString
-	Mode     string
-	Enabled  bool
+	Id      int
+	Name    string
+	BinName string
+	Path    string
+	HotKey  sql.NullString
+	Mode    string
+	Enabled bool
 }
 
 type Update struct {

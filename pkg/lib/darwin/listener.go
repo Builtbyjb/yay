@@ -79,7 +79,7 @@ func Listener(db *core.Database, onEvent func(KeyEvent)) {
 
 			if setting != nil && setting.Enabled {
 				go func() {
-					if err := Launch(setting.Path, setting.Name, setting.Mode); err != nil {
+					if err := Launch(setting.BinName, setting.Mode); err != nil {
 						fmt.Println("Error launching application:", err)
 					}
 				}()

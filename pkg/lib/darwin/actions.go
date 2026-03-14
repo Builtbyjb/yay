@@ -11,8 +11,7 @@ Note:
 The activate switches to the app or focuses it if it's already running.
 */
 
-func Launch(path string, app string, mode string) error {
-	// binPath := filepath.Join(path, app)
+func Launch(app string, mode string) error {
 	// script := fmt.Sprintf(`
 	// 	tell application %q to activate
 	// 	tell application "System Events"

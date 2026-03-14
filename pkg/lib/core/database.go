@@ -24,8 +24,8 @@ func (d *Database) Init() error {
 	CREATE TABLE IF NOT EXISTS settings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
+		bin_name TEXT NOT NULL,
 		path TEXT NOT NULL,
-		icon_path TEXT NOT NULL,
 		hotkey TEXT UNIQUE,
 		mode TEXT CHECK(mode IN ('default', 'desktop')),
 		enabled BOOLEAN
@@ -49,9 +49,9 @@ func (d *Database) Close() error {
 	return d.conn.Close()
 }
 
-func (d *Database) Insert(name string, path string, iconPath string, hotkey sql.NullString, mode string, enabled bool) error {
-	query := "INSERT INTO settings (name, path, icon_path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)"
-	_, err := d.conn.Exec(query, name, path, iconPath, hotkey, mode, enabled)
+func (d *Database) Insert(name string, path string, binName string, hotkey sql.NullString, mode string, enabled bool) error {
+	query := "INSERT INTO settings (name, path, bin_name, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)"
+	_, err := d.conn.Exec(query, name, path, binName, hotkey, mode, enabled)
 	return err
 }
 
@@ -72,7 +72,7 @@ func (d *Database) FindByHotkey(hotkey string) (*Setting, error) {
 	row := d.conn.QueryRow(query, hotkey)
 
 	var s Setting
-	if err := row.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+	if err := row.Scan(&s.Id, &s.Name, &s.BinName, &s.Path, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
@@ -94,38 +94,20 @@ func (d *Database) ClearHotkey(id int) error {
 }
 
 func (d *Database) Refresh(apps []App) ([]Setting, error) {
-	// Build a map of app paths for quick lookup
-	appMap := make(map[string]App)
-	for _, app := range apps {
-		appMap[app.Path] = app
-	}
-
-	// Fetch all existing settings from the database
-	existingPaths, err := d.getExistingPaths()
+	// Clear settings
+	_, err := d.conn.Exec("DELETE FROM settings")
 	if err != nil {
 		return nil, err
 	}
 
 	// Add apps in apps list but not in the database
 	for _, app := range apps {
-		if _, exists := existingPaths[app.Path]; !exists {
-			_, err := d.conn.Exec(
-				"INSERT INTO settings (name, path, icon_path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)",
-				app.Name, app.Path, app.IconPath, sql.NullString{String: "", Valid: false}, "default", true,
-			)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Remove apps in the database but not in the apps list
-	for path := range existingPaths {
-		if _, exists := appMap[path]; !exists {
-			_, err := d.conn.Exec("DELETE FROM settings WHERE path = ?", path)
-			if err != nil {
-				return nil, err
-			}
+		_, err := d.conn.Exec(
+			"INSERT INTO settings (name, bin_name, path, hotkey, mode, enabled) VALUES (?, ?, ?, ?, ?, ?)",
+			app.Name, app.BinName, app.Path, sql.NullString{String: "", Valid: false}, "default", true,
+		)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -138,28 +120,6 @@ func (d *Database) Refresh(apps []App) ([]Setting, error) {
 	return settings, nil
 }
 
-func (d *Database) getExistingPaths() (map[string]struct{}, error) {
-	rows, err := d.conn.Query("SELECT * FROM settings")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	existingPaths := make(map[string]struct{})
-	for rows.Next() {
-		var s Setting
-		if err := rows.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
-			return nil, err
-		}
-		existingPaths[s.Path] = struct{}{}
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return existingPaths, nil
-}
-
 func (d *Database) GetAllSettings() ([]Setting, error) {
 	updatedRows, err := d.conn.Query("SELECT * FROM settings ORDER BY name ASC")
 	if err != nil {
@@ -170,7 +130,7 @@ func (d *Database) GetAllSettings() ([]Setting, error) {
 	var settings []Setting
 	for updatedRows.Next() {
 		var s Setting
-		if err := updatedRows.Scan(&s.Id, &s.Name, &s.Path, &s.IconPath, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
+		if err := updatedRows.Scan(&s.Id, &s.Name, &s.BinName, &s.Path, &s.HotKey, &s.Mode, &s.Enabled); err != nil {
 			return nil, err
 		}
 		settings = append(settings, s)
