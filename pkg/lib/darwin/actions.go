@@ -12,43 +12,50 @@ The activate switches to the app or focuses it if it's already running.
 */
 
 func Launch(app string, mode string) error {
-	// script := fmt.Sprintf(`
-	// 	tell application %q to activate
-	// 	tell application "System Events"
-	// 		tell process %q
-	//                keystroke "f" using {control down, command down}
-	//            end tell
-	// 	end tell
-	//    `, binPath, binPath)
-	// script := `
-	// 	tell application "System Events"
-	// 		set braveProcess to first process whose name is "Brave Browser"
-	// 		set frontmost of braveProcess to true
-	// 	end tell
-	// `
 	script := fmt.Sprintf(`
 		set appName to %q
 
 		-- Open an application if minimized
-		tell application "System Events"
-			tell application process "Dock"
-				click UI element appName of list 1
+		try
+			tell application "System Events"
+				tell application process "Dock"
+					click UI element appName of list 1
+				end tell
 			end tell
-		end tell
+		end try
 
 		tell application appName
+			reopen
 			activate
 		end tell
 		`, app)
 	err := exec.Command("osascript", "-e", script).Run()
 	if err != nil {
+		fmt.Println("Error launching application:", err)
 		fmt.Println(err.Error())
 	}
 	return nil
 }
 
+/* Open applications on the dock */
 func LaunchDockApps(pos uint16) error {
-	fmt.Println("Opening a dock app at position: ", pos)
+	fmt.Println("Opening a dock app at position:", pos)
+	script := fmt.Sprintf(`
+		tell application "System Events"
+			tell application process "Dock"
+				set dockItems to every UI element of list 1
+				if %d ≤ (count of dockItems) then
+					click UI element %d of list 1
+				else
+					error "Dock position out of range"
+				end if
+			end tell
+		end tell
+	`, pos, pos)
+	err := exec.Command("osascript", "-e", script).Run()
+	if err != nil {
+		return fmt.Errorf("error clicking dock app at position %d: %w", pos, err)
+	}
 	return nil
 }
 

@@ -63,7 +63,7 @@ func getApps(dirs []string) []core.App {
 			if ok {
 				apps = append(apps, core.App{
 					Name:    appName,
-					BinName: getBinaryName(dir, entry.Name()),
+					BinName: entry.Name(),
 					Path:    getBinaryPath(dir, entry.Name()),
 				})
 			}
