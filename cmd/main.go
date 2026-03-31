@@ -49,9 +49,20 @@ var versionCmd = &cobra.Command{
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start background daemon",
+	Short: "Start background service",
 	// Long:  `Start the application with the specified settings.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		lib.StartBackgroundService()
+	},
+}
+
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run application",
+	// Long:  `Start the application with the specified settings.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Running...")
+
 		db, err := lib.GetDatabase()
 		if err != nil {
 			fmt.Println("Error occurred while fetching database:", err)
@@ -63,12 +74,21 @@ var startCmd = &cobra.Command{
 	},
 }
 
-var stopCmd = &cobra.Command{
-	Use:   "stop",
-	Short: "Stop background daemon",
+var statusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Check background service status",
 	// Long:  `Stop the application gracefully.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Stopping the application...")
+		lib.CheckBackgroundServiceStatus()
+	},
+}
+
+var stopCmd = &cobra.Command{
+	Use:   "stop",
+	Short: "Stop background service",
+	// Long:  `Stop the application gracefully.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		lib.StopBackgroundService()
 	},
 }
 
@@ -94,6 +114,8 @@ var helpCmd = &cobra.Command{
 func main() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(stopCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(helpCmd)

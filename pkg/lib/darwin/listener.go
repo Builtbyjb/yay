@@ -91,6 +91,6 @@ func Listener(db *core.Database, onEvent func(KeyEvent)) {
 		return false
 	})
 
-	fmt.Println("Listening for global keyboard events... (Ctrl+C to quit)")
+	// fmt.Println("Listening for global keyboard events... (Ctrl+C to quit)")
 	StartEventTap()
 }

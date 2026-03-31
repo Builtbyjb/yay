@@ -11,12 +11,22 @@ yay
 ```
 
 ```sh
-# Start background daemon
+# Run application
+yay run
+```
+
+```sh
+# Start background service
 yay start
 ```
 
 ```sh
-# Stop background daemon
+# Check background service status
+yay status
+```
+
+```sh
+# Stop background service
 yay stop
 ```
 
