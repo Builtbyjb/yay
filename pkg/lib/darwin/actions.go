@@ -39,7 +39,7 @@ func Launch(app string, mode string) error {
 
 /* Open applications on the dock */
 func LaunchDockApps(pos uint16) error {
-	fmt.Println("Opening a dock app at position:", pos)
+	// fmt.Println("Opening a dock app at position:", pos)
 	script := fmt.Sprintf(`
 		tell application "System Events"
 			tell application process "Dock"
