@@ -12,6 +12,13 @@ func (m model) View() string {
 	contents := []string{}
 	contents = append(contents, m.HeaderView())
 	contents = append(contents, m.SearchView())
+	if m.errors != "" {
+		contents = append(contents, lipgloss.JoinVertical(
+			lipgloss.Left,
+			ErrorStyle.Render(m.errors),
+			"\n",
+		))
+	}
 	contents = append(contents, m.TableView())
 	contents = append(contents, m.StatusLineView())
 	contents = append(contents, m.HelpView())

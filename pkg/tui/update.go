@@ -43,7 +43,7 @@ func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
 		k, err := lib.RawcodeToString(m.key)
 
 		if err != nil {
-			m.errors = append(m.errors, fmt.Sprintf("Unknown modifier key: %s", k))
+			m.errors = fmt.Sprintf("Unknown modifier key: %s", k)
 			m.recordingHotkey = false
 		}
 
@@ -56,8 +56,10 @@ func (m model) RecordKey(msg lib.CKeyMsg) (tea.Model, tea.Cmd) {
 					// m.errors = append(m.errors, hotkey)
 					m.settings[idx].HotKey = sql.NullString{String: hotkey, Valid: true}
 					if err := m.db.UpdateHotkey(m.settings[idx].Id, m.settings[idx].HotKey); err != nil {
-						m.errors = append(m.errors, err.Error())
+						m.errors = err.Error()
+						return m, nil
 					}
+
 					m.recordingHotkey = false
 					m.mod = ""
 
@@ -161,7 +163,7 @@ func (m model) handleRowFocusKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.settings[idx].HotKey = sql.NullString{String: "", Valid: false}
 
 			if err != nil {
-				m.errors = append(m.errors, err.Error())
+				m.errors = err.Error()
 			}
 			return m, nil
 		}
@@ -220,7 +222,7 @@ func (m *model) cycleMode() {
 	nextIdx := (currentIdx + 1) % len(AvailableModes)
 	m.settings[idx].Mode = AvailableModes[nextIdx]
 	if err := m.db.UpdateMode(m.settings[idx].Id, m.settings[idx].Mode); err != nil {
-		m.errors = append(m.errors, err.Error())
+		m.errors = err.Error()
 	}
 }
 
@@ -232,7 +234,7 @@ func (m *model) toggleEnabled() {
 	prev := m.settings[idx].Enabled
 	m.settings[idx].Enabled = !prev
 	if err := m.db.UpdateEnabled(m.settings[idx].Id, m.settings[idx].Enabled); err != nil {
-		m.errors = append(m.errors, err.Error())
+		m.errors = err.Error()
 	}
 }
 

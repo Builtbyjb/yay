@@ -96,12 +96,12 @@ func StartBackgroundService() {
 	f, err := os.Create(darwin.PlistPath())
 	if err != nil {
 		fmt.Println("Error creating plist file:", err)
-		return
+		os.Exit(1)
 	}
 
 	if err := t.Execute(f, data); err != nil {
 		fmt.Println("Error executing template:", err)
-		return
+		os.Exit(1)
 	}
 
 	// Close before setting permissions
@@ -110,19 +110,18 @@ func StartBackgroundService() {
 	// Set permissions to 0644 (rw-r--r--)
 	if err := os.Chmod(darwin.PlistPath(), 0644); err != nil {
 		fmt.Println("Error setting plist permissions:", err)
-		return
+		os.Exit(1)
 	}
 
-	// uid := fmt.Sprintf("gui/%d", os.Getuid())
-	serviceId := fmt.Sprintf("gui/%d/%s", os.Getuid(), darwin.LABEL)
-
-	err = exec.Command("launchctl", "bootout", serviceId).Run()
+	err = exec.Command("launchctl", "unload", darwin.PlistPath()).Run()
 	if err != nil {
 		fmt.Println("No existing service to unload, proceeding to load new service.")
 	}
 
+	// Wait a moment to ensure the previous unload has completed before loading the new service
 	time.Sleep(500 * time.Millisecond)
 
+	// Load and start the service using launchctl
 	cmd := exec.Command("launchctl", "load", darwin.PlistPath())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -132,22 +131,13 @@ func StartBackgroundService() {
 		os.Exit(1)
 	}
 
-	start := exec.Command("launchctl", "start", darwin.LABEL)
-	start.Stdout = os.Stdout
-	start.Stderr = os.Stderr
-
-	if err := start.Run(); err != nil {
-		fmt.Println("Error starting service:", err)
-		os.Exit(1)
-	}
+	fmt.Println("Background service started successfully.")
 }
 
 func StopBackgroundService() {
 	fmt.Println("Stopping background service...")
 
-	serviceId := fmt.Sprintf("gui/%d/%s", os.Getuid(), darwin.LABEL)
-
-	cmd := exec.Command("launchctl", "bootout", serviceId)
+	cmd := exec.Command("launchctl", "unload", darwin.PlistPath())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -155,9 +145,17 @@ func StopBackgroundService() {
 		fmt.Println("Error unloading plist:", err)
 		os.Exit(1)
 	}
+
+	fmt.Println("Background service stopped successfully.")
 }
 
 func CheckBackgroundServiceStatus() {
-	out, _ := exec.Command("launchctl", "list", darwin.LABEL).CombinedOutput()
+	out, err := exec.Command("launchctl", "list", darwin.LABEL).CombinedOutput()
+	if err != nil {
+		fmt.Println("An error occured while checking service status:", err)
+		os.Exit(1)
+	}
+
+	// TODO: Prettify printout
 	fmt.Println(string(out))
 }

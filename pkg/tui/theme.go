@@ -46,4 +46,9 @@ var (
 	StatusStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color(PRIMARY_COLOR)).
 			Bold(true)
+
+	// Error message style
+	ErrorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color(ERROR_COLOR)).
+			Bold(true)
 )

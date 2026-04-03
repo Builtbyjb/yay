@@ -22,7 +22,7 @@ type model struct {
 	mod             string
 	key             uint16
 	recordingHotkey bool // true when waiting for the next key press for hotkey
-	errors          []string
+	errors          string
 	debug           []int
 }
 
@@ -41,7 +41,7 @@ func NewModel(db *core.Database, settings []core.Setting, version string) model 
 		activeCol:   colNone,
 		version:     version,
 		keys:        []uint16{},
-		errors:      []string{},
+		errors:      "",
 		debug:       []int{},
 	}
 	m.updateFilter()

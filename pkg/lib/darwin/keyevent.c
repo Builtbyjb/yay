@@ -1,4 +1,3 @@
-
 #include "keyevent.h"
 #include <stdio.h>
 
@@ -49,7 +48,7 @@ void startEventTap() {
         return;
     }
 
-    fprintf(stdout, "Event tap created successfully, listening for keyboard events...\n");
+    // fprintf(stdout, "Event tap created successfully, listening for keyboard events...\n");
     fflush(stdout);
 
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
